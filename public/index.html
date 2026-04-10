@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Cabo an der Riss</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Lobby Screen -->
+  <div id="lobby-screen" class="screen active">
+    <div class="lobby-container">
+      <div class="logo">
+        <div class="logo-beaver">&#x1F9AB;</div>
+        <h1>Cabo <span class="logo-sub">an der Riss</span></h1>
+        <p class="tagline">Ein Kartenspiel aus Biberach</p>
+      </div>
+
+      <div id="join-create">
+        <input type="text" id="player-name" placeholder="Dein Name" maxlength="12" autocomplete="off">
+        <button id="create-btn" class="btn btn-primary">Raum erstellen</button>
+        <div class="divider"><span>oder</span></div>
+        <input type="text" id="room-code-input" placeholder="Raum-Code" maxlength="4" autocomplete="off">
+        <button id="join-btn" class="btn btn-secondary">Beitreten</button>
+      </div>
+
+      <div id="waiting-room" style="display:none">
+        <h2>Raum: <span id="room-code-display"></span></h2>
+        <p class="waiting-hint">Teile den Code mit deinen Mitspielern</p>
+        <ul id="player-list"></ul>
+        <button id="start-btn" class="btn btn-primary" style="display:none">Spiel starten</button>
+        <p id="waiting-msg" class="waiting-hint">Warte auf den Gastgeber...</p>
+      </div>
+
+      <div id="error-toast" class="toast" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- Game Screen -->
+  <div id="game-screen" class="screen">
+    <div id="game-header">
+      <span id="room-info"></span>
+      <span id="round-info"></span>
+      <span id="scores-toggle" title="Punkte">&#x1F3C6;</span>
+    </div>
+
+    <div id="scores-panel" style="display:none">
+      <h3>Punktestand</h3>
+      <div id="scores-list"></div>
+    </div>
+
+    <div id="game-table">
+      <div id="opponents-area"></div>
+
+      <div id="table-center">
+        <div id="deck-area">
+          <div id="deck" class="card card-back clickable">
+            <div class="card-back-design">
+              <div class="card-back-border">
+                <div class="card-back-pattern">&#x1F9AB;</div>
+              </div>
+            </div>
+            <span id="deck-count" class="badge"></span>
+          </div>
+          <span class="label">Stapel</span>
+        </div>
+        <div id="discard-area">
+          <div id="discard" class="card empty-pile">
+            <span class="empty-label">Leer</span>
+          </div>
+          <span class="label">Ablage</span>
+        </div>
+      </div>
+
+      <div id="drawn-card-area" style="display:none">
+        <span id="drawn-label">Gezogene Karte:</span>
+        <div id="drawn-card" class="card"></div>
+      </div>
+
+      <div id="my-area">
+        <div id="my-name-tag"></div>
+        <div id="my-cards"></div>
+      </div>
+    </div>
+
+    <div id="status-bar">
+      <div id="status-message"></div>
+      <div id="action-buttons"></div>
+    </div>
+
+    <div id="cabo-banner" style="display:none">
+      <span>CABO!</span>
+    </div>
+  </div>
+
+  <!-- Reveal Overlay -->
+  <div id="reveal-overlay" style="display:none">
+    <div class="reveal-content">
+      <h2>Runde vorbei!</h2>
+      <div id="reveal-results"></div>
+      <div id="reveal-buttons"></div>
+    </div>
+  </div>
+
+  <!-- Temporary Peek/Spy Overlay -->
+  <div id="peek-overlay" style="display:none">
+    <div class="peek-content">
+      <div id="peek-card" class="card card-large"></div>
+      <p id="peek-label"></p>
+    </div>
+  </div>
+
+  <!-- Rules Overlay -->
+  <div id="rules-overlay" style="display:none">
+    <div class="rules-content">
+      <button id="rules-close" class="btn-close">&times;</button>
+      <h2>Spielregeln</h2>
+      <div class="rules-body">
+        <h3>Ziel</h3>
+        <p>Habe die niedrigste Summe an Kartenwerten in deiner Hand.</p>
+        <h3>Kartenwerte</h3>
+        <p>A=1, 2-10=Wert, J=11, Q=12, schwarzer K=13, <strong>roter K=0</strong></p>
+        <h3>Spielablauf</h3>
+        <p>Zu Beginn siehst du 2 deiner 4 Karten. Dann reihum:</p>
+        <ul>
+          <li><strong>Ziehen:</strong> Nimm vom Stapel oder der Ablage</li>
+          <li><strong>Tauschen:</strong> Ersetze eine deiner Karten</li>
+          <li><strong>Ablegen:</strong> Wirf die gezogene Karte ab</li>
+        </ul>
+        <h3>Spezialkarten (beim Ablegen)</h3>
+        <ul>
+          <li><strong>7, 8 &mdash; Blick:</strong> Sieh dir eine eigene Karte an</li>
+          <li><strong>9, 10 &mdash; Spion:</strong> Sieh dir eine Karte eines Mitspielers an</li>
+          <li><strong>J, Q &mdash; Tausch:</strong> Tausche blind eine Karte mit einem Mitspieler</li>
+        </ul>
+        <h3>Cabo rufen</h3>
+        <p>Glaubst du die niedrigste Summe zu haben, rufe <strong>CABO</strong>. Jeder andere Spieler hat noch einen Zug. Dann wird aufgedeckt. Liegst du falsch: +10 Strafpunkte!</p>
+      </div>
+    </div>
+  </div>
+
+  <button id="rules-btn" class="rules-fab" title="Spielregeln">?</button>
+
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="/js/game-engine.js"></script>
+  <script src="/js/client.js"></script>
+</body>
+</html>
