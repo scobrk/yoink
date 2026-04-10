@@ -19,6 +19,8 @@ let gameState = null;
 let peekTimeout = null;
 let botIds = [];          // IDs of bot players (host only)
 let botMemory = {};       // { botId: { ownCards: {idx: card}, opponentCards: {playerIdx_cardIdx: card} } }
+let slamMode = false;     // Whether player is selecting cards to slam
+let slamSelection = [];   // Indices of cards selected for slamming
 const BOT_NAMES = ['Biber', 'Storch', 'Sch\u00fctze', 'Riss'];
 const BOT_DELAY = 1200;
 
@@ -54,18 +56,22 @@ function showToast(msg) {
 
 // ===== Card HTML Builders =====
 function suitColor(suit) {
+  if (suit === 'red') return 'suit-red';
+  if (suit === 'black') return 'suit-black';
   return (suit === 'hearts' || suit === 'diamonds') ? 'suit-red' : 'suit-black';
 }
 
 function buildCardFace(card, extraClass) {
-  const sym = SUIT_SYMBOLS[card.suit];
+  const isJoker = card.rank === 'Joker';
+  const sym = isJoker ? '\u2605' : (SUIT_SYMBOLS[card.suit] || '');
+  const displayRank = isJoker ? '\u2605' : card.rank;
   const valBadge = card.value !== undefined
     ? `<span class="card-value-badge">${card.value}</span>` : '';
   return `<div class="card card-face ${suitColor(card.suit)} ${extraClass || ''}">
-    <span class="card-rank">${card.rank}</span>
+    <span class="card-rank">${displayRank}</span>
     <span class="card-suit-small">${sym}</span>
-    <span class="card-center-suit">${sym}</span>
-    <span class="card-bottom">${card.rank}</span>
+    <span class="card-center-suit">${isJoker ? '\u{1F0CF}' : sym}</span>
+    <span class="card-bottom">${displayRank}</span>
     ${valBadge}
   </div>`;
 }
@@ -116,6 +122,12 @@ function handleActionOnHost(playerId, action, data) {
       break;
     case 'skip-power':
       result = game.skipPower(playerId);
+      break;
+    case 'slam-cards':
+      result = game.slamCards(playerId, data.cardIndices);
+      break;
+    case 'confirm-peek-spy-swap':
+      result = game.confirmPeekSpySwap(playerId);
       break;
     case 'call-cabo':
       result = game.callCabo(playerId);
@@ -259,6 +271,12 @@ function handleEvent(evtType, data) {
       break;
     case 'card-swapped':
       showToast(`Karte ${data.cardIndex + 1} wurde getauscht!`);
+      break;
+    case 'slam-success':
+      showToast(`${data.playerName} hat ${data.count} Karte(n) abgelegt!`);
+      break;
+    case 'slam-fail':
+      showToast(`${data.playerName}: Karte passt nicht! Strafkarte gezogen.`);
       break;
     case 'player-disconnected':
       showToast(`${data.name} hat das Spiel verlassen`);
@@ -464,6 +482,11 @@ function joinRoom(code) {
 // ===== Render from State =====
 function renderFromState() {
   if (!gameState) return;
+  // Reset slam mode when state changes (e.g. turn ended)
+  if (gameState.turnPhase !== 'start') {
+    slamMode = false;
+    slamSelection = [];
+  }
 
   if (gameState.state === 'lobby') {
     showScreen('lobby-screen');
@@ -571,6 +594,9 @@ function getOpponentCardExtra(playerIndex, cardIndex) {
   if (power.type === 'swap' && power.step === 'select_opponent') {
     return ` clickable card-highlight" data-player-index="${playerIndex}" data-card-index="${cardIndex}`;
   }
+  if (power.type === 'peek_spy_swap' && power.step === 'spy_opponent') {
+    return ` clickable card-highlight" data-player-index="${playerIndex}" data-card-index="${cardIndex}`;
+  }
   return '';
 }
 
@@ -675,13 +701,16 @@ function getMyCardClickable(cardIndex) {
   }
 
   if (!isMyTurn) return false;
+  if (slamMode) return true;
   if (gameState.turnPhase === 'drawn' || gameState.turnPhase === 'discard_swap') return true;
   if (gameState.powerState && gameState.powerState.type === 'peek') return true;
   if (gameState.powerState && gameState.powerState.type === 'swap' && gameState.powerState.step === 'select_own') return true;
+  if (gameState.powerState && gameState.powerState.type === 'peek_spy_swap' && gameState.powerState.step === 'peek_own') return true;
   return false;
 }
 
 function isMyCardSelected(cardIndex) {
+  if (slamMode) return slamSelection.includes(cardIndex);
   if (!gameState || !gameState.powerState) return false;
   return gameState.powerState.type === 'swap' &&
     gameState.powerState.step === 'select_opponent' &&
@@ -693,6 +722,14 @@ function onMyCardClick(cardIndex) {
 
   if (gameState.state === 'peeking') {
     sendAction('peek-card', { cardIndex });
+    return;
+  }
+  if (slamMode) {
+    const idx = slamSelection.indexOf(cardIndex);
+    if (idx >= 0) slamSelection.splice(idx, 1);
+    else slamSelection.push(cardIndex);
+    renderMyCards();
+    renderStatus();
     return;
   }
   if (gameState.turnPhase === 'drawn' || gameState.turnPhase === 'discard_swap') {
@@ -707,6 +744,10 @@ function onMyCardClick(cardIndex) {
     sendAction('use-power', { targetPlayerIndex: gameState.myIndex, targetCardIndex: cardIndex });
     return;
   }
+  if (gameState.powerState && gameState.powerState.type === 'peek_spy_swap' && gameState.powerState.step === 'peek_own') {
+    sendAction('use-power', { targetPlayerIndex: gameState.myIndex, targetCardIndex: cardIndex });
+    return;
+  }
 }
 
 function onOpponentCardClick(playerIndex, cardIndex) {
@@ -717,6 +758,10 @@ function onOpponentCardClick(playerIndex, cardIndex) {
     return;
   }
   if (gameState.powerState.type === 'swap' && gameState.powerState.step === 'select_opponent') {
+    sendAction('use-power', { targetPlayerIndex: playerIndex, targetCardIndex: cardIndex });
+    return;
+  }
+  if (gameState.powerState.type === 'peek_spy_swap' && gameState.powerState.step === 'spy_opponent') {
     sendAction('use-power', { targetPlayerIndex: playerIndex, targetCardIndex: cardIndex });
     return;
   }
@@ -749,8 +794,39 @@ function renderStatus() {
   }
 
   if (gameState.turnPhase === 'start') {
+    if (slamMode) {
+      msg.textContent = `W\u00e4hle Karten zum Ablegen (${slamSelection.length} gew\u00e4hlt)`;
+      btns.innerHTML = `
+        <button class="btn btn-primary btn-small" id="btn-slam-confirm" ${slamSelection.length === 0 ? 'disabled' : ''}>Ablegen!</button>
+        <button class="btn btn-secondary btn-small" id="btn-slam-cancel">Abbrechen</button>
+      `;
+      $('btn-slam-confirm').addEventListener('click', () => {
+        if (slamSelection.length > 0) {
+          sendAction('slam-cards', { cardIndices: [...slamSelection] });
+          slamMode = false;
+          slamSelection = [];
+        }
+      });
+      $('btn-slam-cancel').addEventListener('click', () => {
+        slamMode = false;
+        slamSelection = [];
+        renderMyCards();
+        renderStatus();
+      });
+      return;
+    }
+
     const caboNote = gameState.caboCallerIndex !== null ? ' \u2014 Letzte Runde!' : '';
     msg.textContent = `Du bist dran${caboNote}`;
+    if (gameState.discardTop) {
+      btns.innerHTML += '<button class="btn btn-secondary btn-small" id="btn-slam">Karte ablegen</button>';
+      $('btn-slam').addEventListener('click', () => {
+        slamMode = true;
+        slamSelection = [];
+        renderMyCards();
+        renderStatus();
+      });
+    }
     if (gameState.caboCallerIndex === null) {
       btns.innerHTML += '<button class="btn btn-danger btn-small" id="btn-cabo">CABO!</button>';
       $('btn-cabo').addEventListener('click', () => sendAction('call-cabo'));
@@ -771,6 +847,21 @@ function renderStatus() {
       msg.textContent = power.step === 'select_own'
         ? 'TAUSCH: Tippe auf eine deiner Karten'
         : 'TAUSCH: Tippe auf eine Karte eines Mitspielers';
+    } else if (power.type === 'peek_spy_swap') {
+      if (power.step === 'peek_own') {
+        msg.textContent = 'DAME: Sieh dir eine eigene Karte an';
+      } else if (power.step === 'spy_opponent') {
+        msg.textContent = 'DAME: Sieh dir eine Karte eines Mitspielers an';
+      } else if (power.step === 'decide_swap') {
+        msg.textContent = 'DAME: Karten tauschen?';
+        btns.innerHTML = `
+          <button class="btn btn-primary btn-small" id="btn-do-swap">Tauschen</button>
+          <button class="btn btn-secondary btn-small" id="btn-skip-swap">Nicht tauschen</button>
+        `;
+        $('btn-do-swap').addEventListener('click', () => sendAction('confirm-peek-spy-swap'));
+        $('btn-skip-swap').addEventListener('click', () => sendAction('skip-power'));
+        return;
+      }
     }
     btns.innerHTML = '<button class="btn btn-secondary btn-small" id="btn-skip-power">Verzichten</button>';
     $('btn-skip-power').addEventListener('click', () => sendAction('skip-power'));
@@ -978,7 +1069,6 @@ function botUsePower(botId) {
   const power = game.powerState;
 
   if (power.type === 'peek') {
-    // Peek at an unknown own card
     for (let i = 0; i < player.cards.length; i++) {
       if (!mem.ownCards[i]) {
         handleActionOnHost(botId, 'use-power', { targetPlayerIndex: playerIndex, targetCardIndex: i });
@@ -989,7 +1079,6 @@ function botUsePower(botId) {
     handleActionOnHost(botId, 'skip-power', {});
 
   } else if (power.type === 'spy') {
-    // Spy on a random opponent card
     const opponents = game.players.filter((p, i) => i !== playerIndex);
     if (opponents.length > 0) {
       const opp = opponents[Math.floor(Math.random() * opponents.length)];
@@ -1003,9 +1092,8 @@ function botUsePower(botId) {
 
   } else if (power.type === 'swap') {
     if (power.step === 'select_own') {
-      // Pick our worst known card, or an unknown card
       let worstIdx = 0;
-      let worstVal = -1;
+      let worstVal = -2;
       for (let i = 0; i < player.cards.length; i++) {
         if (mem.ownCards[i]) {
           const v = cardValue(mem.ownCards[i]);
@@ -1019,18 +1107,50 @@ function botUsePower(botId) {
       handleActionOnHost(botId, 'use-power', { targetPlayerIndex: playerIndex, targetCardIndex: worstIdx });
       setTimeout(() => botUsePower(botId), BOT_DELAY);
     } else if (power.step === 'select_opponent') {
-      // Pick a random opponent card (prefer one we spied as low)
       const opponents = game.players.filter((p, i) => i !== playerIndex);
       if (opponents.length > 0) {
         const opp = opponents[Math.floor(Math.random() * opponents.length)];
         const oppIdx = game.getPlayerIndex(opp.id);
         const cardIdx = Math.floor(Math.random() * opp.cards.length);
-        // Lose memory of our swapped card
         delete mem.ownCards[power.selectedCard];
         handleActionOnHost(botId, 'use-power', { targetPlayerIndex: oppIdx, targetCardIndex: cardIdx });
         return;
       }
       handleActionOnHost(botId, 'skip-power', {});
+    }
+
+  } else if (power.type === 'peek_spy_swap') {
+    if (power.step === 'peek_own') {
+      // Peek at unknown own card, or worst known
+      let targetIdx = 0;
+      for (let i = 0; i < player.cards.length; i++) {
+        if (!mem.ownCards[i]) { targetIdx = i; break; }
+      }
+      mem.ownCards[targetIdx] = { ...player.cards[targetIdx] };
+      handleActionOnHost(botId, 'use-power', { targetPlayerIndex: playerIndex, targetCardIndex: targetIdx });
+      setTimeout(() => botUsePower(botId), BOT_DELAY);
+    } else if (power.step === 'spy_opponent') {
+      const opponents = game.players.filter((p, i) => i !== playerIndex);
+      if (opponents.length > 0) {
+        const opp = opponents[Math.floor(Math.random() * opponents.length)];
+        const oppIdx = game.getPlayerIndex(opp.id);
+        const cardIdx = Math.floor(Math.random() * opp.cards.length);
+        mem.opponentCards[`${oppIdx}_${cardIdx}`] = { ...opp.cards[cardIdx] };
+        handleActionOnHost(botId, 'use-power', { targetPlayerIndex: oppIdx, targetCardIndex: cardIdx });
+        setTimeout(() => botUsePower(botId), BOT_DELAY);
+      } else {
+        handleActionOnHost(botId, 'skip-power', {});
+      }
+    } else if (power.step === 'decide_swap') {
+      // Swap if our peeked card is worse than the opponent's
+      const ownVal = cardValue(player.cards[power.ownCardIndex]);
+      const oppVal = cardValue(game.players[power.oppPlayerIndex].cards[power.oppCardIndex]);
+      if (ownVal > oppVal) {
+        delete mem.ownCards[power.ownCardIndex];
+        handleActionOnHost(botId, 'confirm-peek-spy-swap', {});
+      } else {
+        handleActionOnHost(botId, 'skip-power', {});
+      }
     }
   }
 }
