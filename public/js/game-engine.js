@@ -148,9 +148,6 @@ class CaboGame {
           if (this.state === 'reveal') {
             return { ...card, faceUp: true, value: cardValue(card) };
           }
-          if (i === playerIndex && this.players[playerIndex].knownCards.has(j)) {
-            return { ...card, faceUp: true };
-          }
           return { faceUp: false };
         })
       }))
@@ -172,13 +169,19 @@ class CaboGame {
     player.knownCards.add(cardIndex);
     this.peeksDone[playerId] = peeksDone + 1;
 
+    const events = [{
+      target: playerId,
+      type: 'peek-result',
+      data: { cardIndex, card: player.cards[cardIndex] }
+    }];
+
     const allDone = this.players.every(p => (this.peeksDone[p.id] || 0) >= 2);
     if (allDone) {
       this.state = 'playing';
       this.turnPhase = 'start';
     }
 
-    return { broadcast: true };
+    return { broadcast: true, events };
   }
 
   drawDeck(playerId) {
