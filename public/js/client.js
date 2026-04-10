@@ -17,6 +17,10 @@ let myName = '';
 let roomCode = '';
 let gameState = null;
 let peekTimeout = null;
+let botIds = [];          // IDs of bot players (host only)
+let botMemory = {};       // { botId: { ownCards: {idx: card}, opponentCards: {playerIdx_cardIdx: card} } }
+const BOT_NAMES = ['Biber', 'Storch', 'Sch\u00fctze', 'Riss'];
+const BOT_DELAY = 1200;
 
 const $ = (id) => document.getElementById(id);
 
@@ -311,6 +315,19 @@ $('start-btn').addEventListener('click', () => {
   if (!isHost || !game) return;
   const result = game.startRound();
   if (result.error) return showToast(result.error);
+  initBotMemory();
+  broadcastGameState();
+  scheduleBotTurn();
+});
+
+$('add-bot-btn').addEventListener('click', () => {
+  if (!isHost || !game) return;
+  const available = BOT_NAMES.filter(n => !game.players.find(p => p.name === n));
+  if (available.length === 0) return showToast('Keine Bot-Namen mehr frei');
+  const name = available[0];
+  const result = game.addBot(name);
+  if (result.error) return showToast(result.error);
+  botIds.push(result.botId);
   broadcastGameState();
 });
 
@@ -467,19 +484,21 @@ function renderLobby() {
   const list = $('player-list');
   list.innerHTML = gameState.players.map((p, i) => {
     const hostBadge = i === 0 ? '<span class="host-badge">Gastgeber</span>' : '';
+    const botBadge = p.isBot ? '<span class="host-badge">Bot</span>' : '';
     const meTag = p.isMe ? ' (Du)' : '';
-    return `<li><span>${p.name}${meTag}</span>${hostBadge}</li>`;
+    return `<li><span>${p.name}${meTag}</span>${botBadge}${hostBadge}</li>`;
   }).join('');
 
-  if (isHost && gameState.players.length >= 2) {
-    $('start-btn').style.display = 'block';
-    $('waiting-msg').style.display = 'none';
-  } else if (isHost) {
-    $('start-btn').style.display = 'none';
-    $('waiting-msg').textContent = 'Warte auf Mitspieler...';
-    $('waiting-msg').style.display = 'block';
+  if (isHost) {
+    $('lobby-actions').style.display = 'flex';
+    $('lobby-actions').style.gap = '0.5rem';
+    $('lobby-actions').style.justifyContent = 'center';
+    $('start-btn').style.display = gameState.players.length >= 2 ? 'block' : 'none';
+    $('add-bot-btn').style.display = gameState.players.length < 4 ? 'block' : 'none';
+    $('waiting-msg').style.display = gameState.players.length < 2 ? 'block' : 'none';
+    $('waiting-msg').textContent = 'Warte auf Mitspieler oder f\u00fcge Bots hinzu...';
   } else {
-    $('start-btn').style.display = 'none';
+    $('lobby-actions').style.display = 'none';
     $('waiting-msg').textContent = 'Warte auf den Gastgeber...';
     $('waiting-msg').style.display = 'block';
   }
@@ -524,8 +543,10 @@ function renderOpponents() {
       return buildCardBack('card-small' + extra);
     }).join('');
 
+    const botTag = p.isBot ? ' \u{1F9AB}' : '';
+
     return `<div class="opponent-row">
-      <div class="opponent-name ${isActive ? 'active-turn' : ''}">${p.name} ${caboTag}</div>
+      <div class="opponent-name ${isActive ? 'active-turn' : ''}">${p.name}${botTag} ${caboTag}</div>
       <div class="opponent-cards">${cards}</div>
     </div>`;
   }).join('');
@@ -799,3 +820,226 @@ function renderReveal() {
     revealBtns.innerHTML = '<p style="color:var(--text-dim);font-size:0.85rem">Warte auf den Gastgeber...</p>';
   }
 }
+
+// ===== Bot AI =====
+function initBotMemory() {
+  botMemory = {};
+  for (const botId of botIds) {
+    botMemory[botId] = { ownCards: {}, opponentCards: {} };
+  }
+}
+
+function scheduleBotTurn() {
+  if (!isHost || !game) return;
+
+  // Handle bot peeks
+  if (game.state === 'peeking') {
+    for (const botId of botIds) {
+      const done = game.peeksDone[botId] || 0;
+      if (done < 2) {
+        setTimeout(() => {
+          botPeek(botId);
+        }, BOT_DELAY * (done + 1));
+      }
+    }
+    return;
+  }
+
+  // Handle bot turn during play
+  if (game.state === 'playing') {
+    const currentPlayer = game.players[game.currentPlayerIndex];
+    if (currentPlayer && botIds.includes(currentPlayer.id)) {
+      setTimeout(() => botPlayTurn(currentPlayer.id), BOT_DELAY);
+    }
+  }
+}
+
+function botPeek(botId) {
+  if (!game || game.state !== 'peeking') return;
+  const player = game.players.find(p => p.id === botId);
+  if (!player) return;
+
+  for (let i = 0; i < 4; i++) {
+    if (!player.knownCards.has(i)) {
+      const result = game.peekCard(botId, i);
+      if (result) {
+        // Remember the card
+        if (botMemory[botId]) {
+          botMemory[botId].ownCards[i] = { ...player.cards[i] };
+        }
+        broadcastGameState();
+        scheduleBotTurn();
+        return;
+      }
+    }
+  }
+}
+
+function botPlayTurn(botId) {
+  if (!game || game.state !== 'playing') return;
+  const playerIndex = game.getPlayerIndex(botId);
+  if (playerIndex !== game.currentPlayerIndex) return;
+
+  const player = game.players[playerIndex];
+  const mem = botMemory[botId] || { ownCards: {}, opponentCards: {} };
+
+  // Refresh memory of known cards
+  for (const idx of player.knownCards) {
+    mem.ownCards[idx] = { ...player.cards[idx] };
+  }
+
+  if (game.turnPhase === 'start') {
+    // Consider calling Cabo
+    const knownValues = {};
+    let knownTotal = 0;
+    let unknownCount = 0;
+    for (let i = 0; i < player.cards.length; i++) {
+      if (mem.ownCards[i]) {
+        const v = cardValue(mem.ownCards[i]);
+        knownValues[i] = v;
+        knownTotal += v;
+      } else {
+        unknownCount++;
+      }
+    }
+
+    if (unknownCount === 0 && knownTotal <= 6 && game.caboCallerIndex === null) {
+      handleActionOnHost(botId, 'call-cabo', {});
+      return;
+    }
+
+    // Draw from deck
+    handleActionOnHost(botId, 'draw-deck', {});
+    setTimeout(() => botDecideDrawn(botId), BOT_DELAY);
+    return;
+  }
+
+  if (game.turnPhase === 'power') {
+    setTimeout(() => botUsePower(botId), BOT_DELAY);
+    return;
+  }
+}
+
+function botDecideDrawn(botId) {
+  if (!game || game.state !== 'playing') return;
+  const playerIndex = game.getPlayerIndex(botId);
+  if (playerIndex !== game.currentPlayerIndex) return;
+  if (game.turnPhase !== 'drawn') return;
+
+  const player = game.players[playerIndex];
+  const mem = botMemory[botId] || { ownCards: {}, opponentCards: {} };
+  const drawnValue = cardValue(game.drawnCard);
+
+  // Find worst known card to potentially swap
+  let worstIdx = -1;
+  let worstVal = -1;
+  for (let i = 0; i < player.cards.length; i++) {
+    if (mem.ownCards[i]) {
+      const v = cardValue(mem.ownCards[i]);
+      if (v > worstVal) {
+        worstVal = v;
+        worstIdx = i;
+      }
+    }
+  }
+
+  // Find any unknown card slot
+  let unknownIdx = -1;
+  for (let i = 0; i < player.cards.length; i++) {
+    if (!mem.ownCards[i]) { unknownIdx = i; break; }
+  }
+
+  // Swap if drawn card is better than worst known card
+  if (worstIdx >= 0 && drawnValue < worstVal) {
+    mem.ownCards[worstIdx] = { ...game.drawnCard };
+    handleActionOnHost(botId, 'swap-card', { cardIndex: worstIdx });
+    return;
+  }
+
+  // Swap with unknown slot if drawn card is decent (<=4)
+  if (unknownIdx >= 0 && drawnValue <= 4) {
+    mem.ownCards[unknownIdx] = { ...game.drawnCard };
+    handleActionOnHost(botId, 'swap-card', { cardIndex: unknownIdx });
+    return;
+  }
+
+  // Discard the drawn card
+  handleActionOnHost(botId, 'discard-drawn', {});
+}
+
+function botUsePower(botId) {
+  if (!game || game.state !== 'playing') return;
+  const playerIndex = game.getPlayerIndex(botId);
+  if (playerIndex !== game.currentPlayerIndex) return;
+  if (game.turnPhase !== 'power' || !game.powerState) return;
+
+  const player = game.players[playerIndex];
+  const mem = botMemory[botId] || { ownCards: {}, opponentCards: {} };
+  const power = game.powerState;
+
+  if (power.type === 'peek') {
+    // Peek at an unknown own card
+    for (let i = 0; i < player.cards.length; i++) {
+      if (!mem.ownCards[i]) {
+        handleActionOnHost(botId, 'use-power', { targetPlayerIndex: playerIndex, targetCardIndex: i });
+        mem.ownCards[i] = { ...player.cards[i] };
+        return;
+      }
+    }
+    handleActionOnHost(botId, 'skip-power', {});
+
+  } else if (power.type === 'spy') {
+    // Spy on a random opponent card
+    const opponents = game.players.filter((p, i) => i !== playerIndex);
+    if (opponents.length > 0) {
+      const opp = opponents[Math.floor(Math.random() * opponents.length)];
+      const oppIdx = game.getPlayerIndex(opp.id);
+      const cardIdx = Math.floor(Math.random() * opp.cards.length);
+      mem.opponentCards[`${oppIdx}_${cardIdx}`] = { ...opp.cards[cardIdx] };
+      handleActionOnHost(botId, 'use-power', { targetPlayerIndex: oppIdx, targetCardIndex: cardIdx });
+      return;
+    }
+    handleActionOnHost(botId, 'skip-power', {});
+
+  } else if (power.type === 'swap') {
+    if (power.step === 'select_own') {
+      // Pick our worst known card, or an unknown card
+      let worstIdx = 0;
+      let worstVal = -1;
+      for (let i = 0; i < player.cards.length; i++) {
+        if (mem.ownCards[i]) {
+          const v = cardValue(mem.ownCards[i]);
+          if (v > worstVal) { worstVal = v; worstIdx = i; }
+        }
+      }
+      if (worstVal <= 3) {
+        handleActionOnHost(botId, 'skip-power', {});
+        return;
+      }
+      handleActionOnHost(botId, 'use-power', { targetPlayerIndex: playerIndex, targetCardIndex: worstIdx });
+      setTimeout(() => botUsePower(botId), BOT_DELAY);
+    } else if (power.step === 'select_opponent') {
+      // Pick a random opponent card (prefer one we spied as low)
+      const opponents = game.players.filter((p, i) => i !== playerIndex);
+      if (opponents.length > 0) {
+        const opp = opponents[Math.floor(Math.random() * opponents.length)];
+        const oppIdx = game.getPlayerIndex(opp.id);
+        const cardIdx = Math.floor(Math.random() * opp.cards.length);
+        // Lose memory of our swapped card
+        delete mem.ownCards[power.selectedCard];
+        handleActionOnHost(botId, 'use-power', { targetPlayerIndex: oppIdx, targetCardIndex: cardIdx });
+        return;
+      }
+      handleActionOnHost(botId, 'skip-power', {});
+    }
+  }
+}
+
+// Hook into broadcastGameState to trigger bot turns
+const _origBroadcastGameState = broadcastGameState;
+broadcastGameState = function() {
+  _origBroadcastGameState();
+  if (isHost && game) {
+    setTimeout(() => scheduleBotTurn(), 100);
+  }
+};

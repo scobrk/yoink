@@ -62,9 +62,22 @@ class CaboGame {
       return { error: 'Name already taken' };
     }
     this.players.push({
-      id, name, cards: [], knownCards: new Set(), score: 0
+      id, name, cards: [], knownCards: new Set(), score: 0, isBot: false
     });
     return { ok: true };
+  }
+
+  addBot(name) {
+    if (this.state !== 'lobby') return { error: 'Game already in progress' };
+    if (this.players.length >= 4) return { error: 'Room is full (max 4)' };
+    if (this.players.find(p => p.name.toLowerCase() === name.toLowerCase())) {
+      return { error: 'Name already taken' };
+    }
+    const botId = 'bot-' + Math.random().toString(36).substr(2, 9);
+    this.players.push({
+      id: botId, name, cards: [], knownCards: new Set(), score: 0, isBot: true
+    });
+    return { ok: true, botId };
   }
 
   removePlayer(id) {
@@ -125,6 +138,7 @@ class CaboGame {
         name: p.name,
         cardCount: p.cards.length,
         score: p.score,
+        isBot: p.isBot,
         isMe: i === playerIndex,
         cards: p.cards.map((card, j) => {
           if (this.state === 'reveal') {
