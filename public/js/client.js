@@ -532,7 +532,7 @@ function showPeekOverlay(card, label) {
   revealEl.style.display = 'block';
   revealEl.title = label;
   if (peekTimeout) clearTimeout(peekTimeout);
-  peekTimeout = setTimeout(() => { revealEl.style.display = 'none'; }, 3000);
+  peekTimeout = setTimeout(() => { peekTimeout = null; revealEl.style.display = 'none'; }, 3000);
 }
 
 // ===== Swap Animation =====
@@ -754,12 +754,6 @@ function joinRoom(code) {
 function renderFromState() {
   if (!gameState) return;
   if (gameState.turnPhase !== 'start') { slamMode = false; slamSelection = []; }
-  // Clear deck reveal if we're no longer in a drawn phase (turn changed etc.)
-  const isMyTurn = gameState.myIndex === gameState.currentPlayerIndex;
-  if (!isMyTurn || (gameState.turnPhase !== 'drawn' && gameState.turnPhase !== 'discard_swap')) {
-    const rev = $('deck-reveal');
-    if (rev && gameState.turnPhase !== 'power') rev.style.display = 'none';
-  }
   if (gameState.state === 'lobby') { showScreen('lobby-screen'); renderLobby(); }
   else { showScreen('game-screen'); renderGame(); }
 }
@@ -928,6 +922,10 @@ function renderTableCenter() {
 
 function renderDrawnCard() {
   const revealEl = $('deck-reveal');
+
+  // A peek/spy result is being shown — don't touch deck-reveal
+  if (peekTimeout) return;
+
   const isMyTurn = gameState.myIndex === gameState.currentPlayerIndex;
 
   if (!gameState.drawnCard || !isMyTurn ||
