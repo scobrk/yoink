@@ -93,9 +93,13 @@ const TRANSLATIONS = {
     slamSuccess: (name, n) => `${name} hat ${n} Karte(n) abgelegt!`,
     slamFail: (name) => `${name}: Karte passt nicht! Strafkarte.`,
     disconnected: (name) => `${name} hat das Spiel verlassen`,
-    bubbleDraw: 'zieht',
+    bubbleDraw: 'zieht vom Stapel',
     bubbleDrawDiscard: 'nimmt Ablage',
-    bubblePeek: 'schaut',
+    bubbleDiscard: 'ablegen',
+    bubbleDiscardPower: (p) => `ablegen → ${p}!`,
+    bubbleSwapDrawn: (n) => `tauscht Pos. ${n}`,
+    bubbleSkip: 'überspringt',
+    bubblePeek: 'schaut eigene Karte',
     bubbleSpy: (target) => `spioniert ${target}`,
     bubbleSwap: (target) => `tauscht mit ${target}`,
     bubbleSlamOk: (n) => `${n} abgelegt!`,
@@ -195,9 +199,13 @@ const TRANSLATIONS = {
     slamSuccess: (name, n) => `${name} slammed ${n} card(s)!`,
     slamFail: (name) => `${name}: Wrong card! Penalty drawn.`,
     disconnected: (name) => `${name} left the game`,
-    bubbleDraw: 'draws',
+    bubbleDraw: 'draws from deck',
     bubbleDrawDiscard: 'takes discard',
-    bubblePeek: 'peeks',
+    bubbleDiscard: 'discards',
+    bubbleDiscardPower: (p) => `discard → ${p}!`,
+    bubbleSwapDrawn: (n) => `swaps pos. ${n}`,
+    bubbleSkip: 'skips power',
+    bubblePeek: 'peeks own card',
     bubbleSpy: (target) => `spied ${target}`,
     bubbleSwap: (target) => `swapped with ${target}`,
     bubbleSlamOk: (n) => `slammed ${n}!`,
@@ -477,6 +485,15 @@ function handleEvent(evtType, data) {
       break;
     case 'swap-occurred':
       showBubble(data.actorIndex, t('bubbleSwap', data.targetName));
+      break;
+    case 'swap-drawn':
+      showBubble(data.actorIndex, t('bubbleSwapDrawn', data.pos));
+      break;
+    case 'discard-drawn':
+      showBubble(data.actorIndex, data.power ? t('bubbleDiscardPower', data.power.toUpperCase()) : t('bubbleDiscard'));
+      break;
+    case 'skip-power':
+      showBubble(data.actorIndex, t('bubbleSkip'));
       break;
     case 'slam-success':
       showBubble(data.playerIndex, t('bubbleSlamOk', data.count));

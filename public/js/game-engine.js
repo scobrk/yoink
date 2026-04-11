@@ -177,7 +177,8 @@ class CaboGame {
     this.discardPile.push(oldCard);
     player.knownCards.add(cardIndex);
     this._nextTurn();
-    return { broadcast: true };
+    const events = [{ target: 'all', type: 'swap-drawn', data: { actorIndex: playerIndex, actorName: player.name, pos: cardIndex + 1 } }];
+    return { broadcast: true, events };
   }
 
   discardDrawn(playerId) {
@@ -185,8 +186,10 @@ class CaboGame {
     const playerIndex = this.getPlayerIndex(playerId);
     if (playerIndex !== this.currentPlayerIndex || this.turnPhase !== 'drawn') return null;
     const power = cardPower(this.drawnCard);
+    const discardedCard = this.drawnCard;
     this.discardPile.push(this.drawnCard);
     this.drawnCard = null;
+    const events = [{ target: 'all', type: 'discard-drawn', data: { actorIndex: playerIndex, actorName: player.name, power: power || null, cardValue: discardedCard.value } }];
     if (power) {
       this.turnPhase = 'power';
       if (power === 'peek')  this.powerState = { type: 'peek', step: 'select_target' };
@@ -195,7 +198,7 @@ class CaboGame {
     } else {
       this._nextTurn();
     }
-    return { broadcast: true };
+    return { broadcast: true, events };
   }
 
   usePower(playerId, targetPlayerIndex, targetCardIndex) {
@@ -255,8 +258,10 @@ class CaboGame {
     if (this.state !== 'playing') return null;
     const playerIndex = this.getPlayerIndex(playerId);
     if (playerIndex !== this.currentPlayerIndex || this.turnPhase !== 'power') return null;
+    const player = this.players[playerIndex];
     this._nextTurn();
-    return { broadcast: true };
+    const events = [{ target: 'all', type: 'skip-power', data: { actorIndex: playerIndex, actorName: player.name } }];
+    return { broadcast: true, events };
   }
 
   slamCards(playerId, cardIndices) {
