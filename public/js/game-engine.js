@@ -185,6 +185,7 @@ class CaboGame {
     if (this.state !== 'playing') return null;
     const playerIndex = this.getPlayerIndex(playerId);
     if (playerIndex !== this.currentPlayerIndex || this.turnPhase !== 'drawn') return null;
+    const player = this.players[playerIndex];
     const power = cardPower(this.drawnCard);
     const discardedCard = this.drawnCard;
     this.discardPile.push(this.drawnCard);
