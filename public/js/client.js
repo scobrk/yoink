@@ -1,6 +1,21 @@
 // ===== Cabo an der Riss — Client =====
 // Uses PeerJS (WebRTC) for peer-to-peer multiplayer.
 
+// ── Service Worker registration ──
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
+// ── Preload card images into browser memory on page load ──
+// Runs immediately so images are warm before the game starts.
+// The service worker also caches them on disk for subsequent visits.
+(function preloadCards() {
+  for (let i = 0; i <= 13; i++) {
+    const img = new Image();
+    img.src = `/images/cards/${i}.jpg`;
+  }
+})();
+
 const PEER_PREFIX = 'cabo-an-der-riss-';
 
 let peer = null;
@@ -90,7 +105,7 @@ const TRANSLATIONS = {
     nextRound: 'N\u00e4chste Runde',
     backLobby: 'Zur\u00fcck zur Lobby',
     waitHost: 'Warte auf den Gastgeber\u2026',
-    cardSwapped: (n) => `Karte ${n} wurde getauscht!`,
+    cardSwapped: (n) => `Karte ${n} wurde getauscht! Nicht schlecht.`,
     slamSuccess: (name, n) => `${name} hat ${n} Karte(n) abgelegt!`,
     slamFail: (name) => `${name}: Karte passt nicht! Strafkarte.`,
     disconnected: (name) => `${name} hat das Spiel verlassen`,
