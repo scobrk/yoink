@@ -14,6 +14,7 @@ let myName = '';
 let roomCode = '';
 let gameState = null;
 let peekTimeout = null;
+let activePeek = null; // { playerIndex, cardIndex, card } — survives render cycles
 let botIds = [];
 let botMemory = {};
 let slamMode = false;
@@ -466,10 +467,10 @@ function handleEvent(evtType, data) {
       showCaboBanner();
       break;
     case 'peek-result':
-      showPeekOverlay(data.card, t('yourCardN', data.cardIndex + 1));
+      if (gameState) showCardReveal(gameState.myIndex, data.cardIndex, data.card);
       break;
     case 'spy-result':
-      if (gameState) showPeekOverlay(data.card, t('theirCardN', gameState.players[data.playerIndex].name, data.cardIndex + 1));
+      if (gameState) showCardReveal(data.playerIndex, data.cardIndex, data.card);
       break;
     case 'card-swapped':
       showToast(t('cardSwapped', data.cardIndex + 1));
@@ -521,18 +522,22 @@ function showCaboBanner() {
   setTimeout(() => { banner.style.display = 'none'; }, 2200);
 }
 
-function showPeekOverlay(card, label) {
-  const revealEl = $('deck-reveal');
-  const v = card.value;
-  const lbl = powerLabel(v);
-  revealEl.className = `card card-face ${powerClass(v)}`;
-  revealEl.innerHTML = lbl
-    ? `<span class="card-corner">${v}</span><span class="card-name">${lbl}</span>`
-    : `<span class="card-num">${v}</span>`;
-  revealEl.style.display = 'block';
-  revealEl.title = label;
+function showCardReveal(playerIndex, cardIndex, card) {
   if (peekTimeout) clearTimeout(peekTimeout);
-  peekTimeout = setTimeout(() => { peekTimeout = null; revealEl.style.display = 'none'; }, 3000);
+  activePeek = { playerIndex, cardIndex, card };
+  // Re-render the affected area so the card shows face-up immediately
+  if (gameState) {
+    if (playerIndex === gameState.myIndex) renderMyCards();
+    else renderOpponents();
+  }
+  peekTimeout = setTimeout(() => {
+    peekTimeout = null;
+    activePeek = null;
+    if (gameState) {
+      if (playerIndex === gameState.myIndex) renderMyCards();
+      else renderOpponents();
+    }
+  }, 3000);
 }
 
 // ===== Swap Animation =====
@@ -858,6 +863,9 @@ function renderOpponents() {
 
     const cards = p.cards.map((card, j) => {
       const extra = getOpponentCardExtra(pIndex, j);
+      const peekCard = activePeek && activePeek.playerIndex === pIndex && activePeek.cardIndex === j
+        ? activePeek.card : null;
+      if (peekCard) return buildCardFace(peekCard, 'card-small card-peek-reveal' + extra);
       return card.faceUp ? buildCardFace(card, 'card-small' + extra) : buildCardBack('card-small' + extra);
     }).join('');
 
@@ -922,10 +930,6 @@ function renderTableCenter() {
 
 function renderDrawnCard() {
   const revealEl = $('deck-reveal');
-
-  // A peek/spy result is being shown — don't touch deck-reveal
-  if (peekTimeout) return;
-
   const isMyTurn = gameState.myIndex === gameState.currentPlayerIndex;
 
   if (!gameState.drawnCard || !isMyTurn ||
@@ -952,17 +956,21 @@ function renderMyCards() {
 
   const container = $('my-cards');
   container.innerHTML = me.cards.map((card, i) => {
+    const peekCard = activePeek && activePeek.playerIndex === gameState.myIndex && activePeek.cardIndex === i
+      ? activePeek.card : null;
+    const display = peekCard || card;
     const canClick = getMyCardClickable(i);
     const highlight = canClick ? ' card-highlight' : '';
     const selected = isMyCardSelected(i) ? ' card-selected' : '';
     const clickCls = canClick ? ' clickable' : '';
+    const peekCls = peekCard ? ' card-peek-reveal' : '';
 
-    if (card.faceUp) {
-      const lbl = powerLabel(card.value);
+    if (peekCard || card.faceUp) {
+      const lbl = powerLabel(display.value);
       const inner = lbl
-        ? `<span class="card-corner">${card.value}</span><span class="card-name">${lbl}</span>`
-        : `<span class="card-num">${card.value}</span>`;
-      return `<div class="card card-face ${powerClass(card.value)}${highlight}${selected}${clickCls}" data-index="${i}">${inner}</div>`;
+        ? `<span class="card-corner">${display.value}</span><span class="card-name">${lbl}</span>`
+        : `<span class="card-num">${display.value}</span>`;
+      return `<div class="card card-face ${powerClass(display.value)}${highlight}${selected}${clickCls}${peekCls}" data-index="${i}">${inner}</div>`;
     }
     return `<div class="card card-back${highlight}${selected}${clickCls}" data-index="${i}">
       <div class="card-back-design"><div class="card-back-border"><div class="card-back-pattern">\u{1F9AB}</div></div></div>
