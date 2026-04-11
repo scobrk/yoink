@@ -93,6 +93,13 @@ const TRANSLATIONS = {
     slamSuccess: (name, n) => `${name} hat ${n} Karte(n) abgelegt!`,
     slamFail: (name) => `${name}: Karte passt nicht! Strafkarte.`,
     disconnected: (name) => `${name} hat das Spiel verlassen`,
+    bubbleDraw: 'zieht',
+    bubbleDrawDiscard: 'nimmt Ablage',
+    bubblePeek: 'schaut',
+    bubbleSpy: (target) => `spioniert ${target}`,
+    bubbleSwap: (target) => `tauscht mit ${target}`,
+    bubbleSlamOk: (n) => `${n} abgelegt!`,
+    bubbleSlamFail: 'Falsche Karte!',
     yourCardN: (n) => `Deine Karte ${n}`,
     theirCardN: (name, n) => `${name}s Karte ${n}`,
     rulesBody: `
@@ -114,7 +121,7 @@ const TRANSLATIONS = {
         <li><strong>7, 8 &mdash; PEEK:</strong> Sieh dir eine eigene Karte an</li>
         <li><strong>9, 10 &mdash; SPY:</strong> Sieh dir eine Karte eines Mitspielers an</li>
         <li><strong>11, 12 &mdash; SWAP:</strong> Tausche blind eine Karte mit einem Mitspieler</li>
-        <li><strong>13 &mdash; KING:</strong> Sieh eigene + fremde Karte, dann optional tauschen</li>
+        <li><strong>13:</strong> Hoher Wert, keine Spezialfunktion</li>
       </ul>
       <h3>Cabo rufen</h3>
       <p>Glaube, die niedrigste Summe zu haben? Ruf <strong>CABO</strong>. Jeder andere hat noch einen Zug. Liegst du falsch: +10 Strafpunkte!</p>
@@ -188,6 +195,13 @@ const TRANSLATIONS = {
     slamSuccess: (name, n) => `${name} slammed ${n} card(s)!`,
     slamFail: (name) => `${name}: Wrong card! Penalty drawn.`,
     disconnected: (name) => `${name} left the game`,
+    bubbleDraw: 'draws',
+    bubbleDrawDiscard: 'takes discard',
+    bubblePeek: 'peeks',
+    bubbleSpy: (target) => `spied ${target}`,
+    bubbleSwap: (target) => `swapped with ${target}`,
+    bubbleSlamOk: (n) => `slammed ${n}!`,
+    bubbleSlamFail: 'wrong card!',
     yourCardN: (n) => `Your card ${n}`,
     theirCardN: (name, n) => `${name}'s card ${n}`,
     rulesBody: `
@@ -209,7 +223,7 @@ const TRANSLATIONS = {
         <li><strong>7, 8 &mdash; PEEK:</strong> Look at one of your own cards</li>
         <li><strong>9, 10 &mdash; SPY:</strong> Look at an opponent's card</li>
         <li><strong>11, 12 &mdash; SWAP:</strong> Blindly swap a card with an opponent</li>
-        <li><strong>13 &mdash; KING:</strong> Look at your card + opponent's card, then optionally swap</li>
+        <li><strong>13:</strong> High value, no special ability</li>
       </ul>
       <h3>Calling Cabo</h3>
       <p>Think you have the lowest total? Call <strong>CABO</strong>. Everyone else gets one more turn. Wrong call: +10 penalty!</p>
@@ -289,7 +303,6 @@ function powerClass(value) {
   if (value === 7 || value === 8)   return 'power-peek';
   if (value === 9 || value === 10)  return 'power-spy';
   if (value === 11 || value === 12) return 'power-swap';
-  if (value === 13)                 return 'power-king';
   return 'power-none';
 }
 
@@ -297,16 +310,22 @@ function powerLabel(value) {
   if (value === 7 || value === 8)   return 'PEEK';
   if (value === 9 || value === 10)  return 'SPY';
   if (value === 11 || value === 12) return 'SWAP';
-  if (value === 13)                 return 'KING';
   return '';
 }
 
 function buildCardFace(card, extraClass) {
   const v = card.value;
+  const cls = powerClass(v);
   const label = powerLabel(v);
-  return `<div class="card card-face ${powerClass(v)} ${extraClass || ''}">
+  const extra = extraClass || '';
+  if (label) {
+    return `<div class="card card-face ${cls} ${extra}">
+      <span class="card-corner">${v}</span>
+      <span class="card-name">${label}</span>
+    </div>`;
+  }
+  return `<div class="card card-face ${cls} ${extra}">
     <span class="card-num">${v}</span>
-    ${label ? `<span class="card-power-label">${label}</span>` : ''}
   </div>`;
 }
 
@@ -336,7 +355,6 @@ function handleActionOnHost(playerId, action, data) {
     case 'use-power':             result = game.usePower(playerId, data.targetPlayerIndex, data.targetCardIndex); break;
     case 'skip-power':            result = game.skipPower(playerId); break;
     case 'slam-cards':            result = game.slamCards(playerId, data.cardIndices); break;
-    case 'confirm-peek-spy-swap': result = game.confirmPeekSpySwap(playerId); break;
     case 'call-cabo':             result = game.callCabo(playerId); break;
     case 'play-again':            result = game.playAgain(); break;
     case 'back-to-lobby':         result = game.backToLobby(); break;
@@ -435,15 +453,42 @@ function onGuestConnected(conn) {
 // ===== Events =====
 function handleEvent(evtType, data) {
   switch (evtType) {
-    case 'cabo-called':       showCaboBanner(); break;
-    case 'peek-result':       showPeekOverlay(data.card, t('yourCardN', data.cardIndex + 1)); break;
+    case 'cabo-called':
+      showBubble(data.playerIndex, 'CABO!');
+      showCaboBanner();
+      break;
+    case 'peek-result':
+      showPeekOverlay(data.card, t('yourCardN', data.cardIndex + 1));
+      break;
     case 'spy-result':
       if (gameState) showPeekOverlay(data.card, t('theirCardN', gameState.players[data.playerIndex].name, data.cardIndex + 1));
       break;
-    case 'card-swapped':      showToast(t('cardSwapped', data.cardIndex + 1)); break;
-    case 'slam-success':      showToast(t('slamSuccess', data.playerName, data.count)); break;
-    case 'slam-fail':         showToast(t('slamFail', data.playerName)); break;
-    case 'player-disconnected': showToast(t('disconnected', data.name)); break;
+    case 'card-swapped':
+      showToast(t('cardSwapped', data.cardIndex + 1));
+      break;
+    case 'draw-occurred':
+      showBubble(data.actorIndex, data.source === 'deck' ? t('bubbleDraw') : t('bubbleDrawDiscard'));
+      break;
+    case 'peek-occurred':
+      showBubble(data.actorIndex, t('bubblePeek'));
+      break;
+    case 'spy-occurred':
+      showBubble(data.actorIndex, t('bubbleSpy', data.targetName));
+      break;
+    case 'swap-occurred':
+      showBubble(data.actorIndex, t('bubbleSwap', data.targetName));
+      break;
+    case 'slam-success':
+      showBubble(data.playerIndex, t('bubbleSlamOk', data.count));
+      showToast(t('slamSuccess', data.playerName, data.count));
+      break;
+    case 'slam-fail':
+      showBubble(data.playerIndex, t('bubbleSlamFail'));
+      showToast(t('slamFail', data.playerName));
+      break;
+    case 'player-disconnected':
+      showToast(t('disconnected', data.name));
+      break;
   }
 }
 
@@ -462,12 +507,35 @@ function showPeekOverlay(card, label) {
   const v = card.value;
   const lbl = powerLabel(v);
   peekCard.className = `card card-large card-face ${powerClass(v)}`;
-  peekCard.innerHTML = `<span class="card-num">${v}</span>${lbl ? `<span class="card-power-label">${lbl}</span>` : ''}`;
+  if (lbl) {
+    peekCard.innerHTML = `<span class="card-corner">${v}</span><span class="card-name">${lbl}</span>`;
+  } else {
+    peekCard.innerHTML = `<span class="card-num">${v}</span>`;
+  }
   $('peek-label').textContent = label;
   overlay.style.display = 'flex';
   if (peekTimeout) clearTimeout(peekTimeout);
   peekTimeout = setTimeout(() => { overlay.style.display = 'none'; }, 3000);
   overlay.onclick = () => { overlay.style.display = 'none'; if (peekTimeout) clearTimeout(peekTimeout); };
+}
+
+function showBubble(playerIndex, text) {
+  if (playerIndex == null || !gameState) return;
+  let bubbleEl = null;
+  if (playerIndex === gameState.myIndex) {
+    bubbleEl = document.querySelector('#my-area .bubble');
+  } else {
+    const seat = document.querySelector(`#game-table .seat[data-player-index="${playerIndex}"]`);
+    if (seat) bubbleEl = seat.querySelector('.bubble');
+  }
+  if (!bubbleEl) return;
+  bubbleEl.textContent = text;
+  bubbleEl.style.display = 'block';
+  bubbleEl.style.animation = 'none';
+  void bubbleEl.offsetHeight; // reflow to restart animation
+  bubbleEl.style.animation = '';
+  clearTimeout(bubbleEl._hideTimer);
+  bubbleEl._hideTimer = setTimeout(() => { bubbleEl.style.display = 'none'; }, 3600);
 }
 
 // ===== Lobby UI Events =====
@@ -683,32 +751,51 @@ function renderHeader() {
 }
 
 // ===== Render Opponents =====
+function getSeatPositionClass(seatIndex, totalOpponents) {
+  if (totalOpponents === 1) return 'seat-pos-top';
+  if (totalOpponents === 2) return seatIndex === 0 ? 'seat-pos-left' : 'seat-pos-right';
+  // 3 opponents: left, top, right
+  if (seatIndex === 0) return 'seat-pos-left';
+  if (seatIndex === 1) return 'seat-pos-top';
+  return 'seat-pos-right';
+}
+
 function renderOpponents() {
-  const area = $('opponents-area');
+  const table = $('game-table');
+  // Remove previously injected seats
+  table.querySelectorAll('.seat').forEach(el => el.remove());
+
   const opponents = gameState.players.filter(p => !p.isMe);
 
-  area.innerHTML = opponents.map(p => {
+  opponents.forEach((p, seatIndex) => {
     const pIndex = gameState.players.indexOf(p);
     const isActive = pIndex === gameState.currentPlayerIndex && gameState.state === 'playing';
     const isCabo = pIndex === gameState.caboCallerIndex;
     const caboTag = isCabo ? '<span class="cabo-tag">CABO</span>' : '';
     const botTag = p.isBot ? ' \u{1F9AB}' : '';
+    const posClass = getSeatPositionClass(seatIndex, opponents.length);
 
     const cards = p.cards.map((card, j) => {
       const extra = getOpponentCardExtra(pIndex, j);
       return card.faceUp ? buildCardFace(card, 'card-small' + extra) : buildCardBack('card-small' + extra);
     }).join('');
 
-    return `<div class="seat">
+    const seatEl = document.createElement('div');
+    seatEl.className = `seat ${posClass}`;
+    seatEl.dataset.playerIndex = pIndex;
+    seatEl.innerHTML = `
+      <div class="bubble" style="display:none"></div>
       <div class="seat-cards">${cards}</div>
       <div class="seat-name ${isActive ? 'active-turn' : ''}">${p.name}${botTag}${caboTag}</div>
-    </div>`;
-  }).join('');
+    `;
 
-  area.querySelectorAll('.card[data-player-index]').forEach(el => {
-    el.addEventListener('click', () => {
-      onOpponentCardClick(parseInt(el.dataset.playerIndex), parseInt(el.dataset.cardIndex));
+    seatEl.querySelectorAll('.card[data-player-index]').forEach(el => {
+      el.addEventListener('click', () => {
+        onOpponentCardClick(parseInt(el.dataset.playerIndex), parseInt(el.dataset.cardIndex));
+      });
     });
+
+    table.appendChild(seatEl);
   });
 }
 
@@ -718,7 +805,6 @@ function getOpponentCardExtra(playerIndex, cardIndex) {
   const attrs = ` clickable card-highlight" data-player-index="${playerIndex}" data-card-index="${cardIndex}`;
   if (power.type === 'spy' && power.step === 'select_target') return attrs;
   if (power.type === 'swap' && power.step === 'select_opponent') return attrs;
-  if (power.type === 'peek_spy_swap' && power.step === 'spy_opponent') return attrs;
   return '';
 }
 
@@ -738,7 +824,11 @@ function renderTableCenter() {
     const card = gameState.discardTop;
     const lbl = powerLabel(card.value);
     discardEl.className = `card card-face ${powerClass(card.value)}`;
-    discardEl.innerHTML = `<span class="card-num">${card.value}</span>${lbl ? `<span class="card-power-label">${lbl}</span>` : ''}`;
+    if (lbl) {
+      discardEl.innerHTML = `<span class="card-corner">${card.value}</span><span class="card-name">${lbl}</span>`;
+    } else {
+      discardEl.innerHTML = `<span class="card-num">${card.value}</span>`;
+    }
     discardEl.classList.toggle('clickable', canDraw);
     discardEl.classList.toggle('card-highlight', canDraw);
     discardEl.onclick = canDraw ? () => sendAction('draw-discard') : null;
@@ -757,7 +847,11 @@ function renderDrawnCard() {
     const lbl = powerLabel(card.value);
     const el = $('drawn-card');
     el.className = `card card-face ${powerClass(card.value)}`;
-    el.innerHTML = `<span class="card-num">${card.value}</span>${lbl ? `<span class="card-power-label">${lbl}</span>` : ''}`;
+    if (lbl) {
+      el.innerHTML = `<span class="card-corner">${card.value}</span><span class="card-name">${lbl}</span>`;
+    } else {
+      el.innerHTML = `<span class="card-num">${card.value}</span>`;
+    }
     $('drawn-label').textContent = gameState.turnPhase === 'discard_swap' ? t('fromDiscard') : t('drawn');
   } else {
     area.style.display = 'none';
@@ -780,10 +874,10 @@ function renderMyCards() {
 
     if (card.faceUp) {
       const lbl = powerLabel(card.value);
-      return `<div class="card card-face ${powerClass(card.value)}${highlight}${selected}${clickCls}" data-index="${i}">
-        <span class="card-num">${card.value}</span>
-        ${lbl ? `<span class="card-power-label">${lbl}</span>` : ''}
-      </div>`;
+      const inner = lbl
+        ? `<span class="card-corner">${card.value}</span><span class="card-name">${lbl}</span>`
+        : `<span class="card-num">${card.value}</span>`;
+      return `<div class="card card-face ${powerClass(card.value)}${highlight}${selected}${clickCls}" data-index="${i}">${inner}</div>`;
     }
     return `<div class="card card-back${highlight}${selected}${clickCls}" data-index="${i}">
       <div class="card-back-design"><div class="card-back-border"><div class="card-back-pattern">\u{1F9AB}</div></div></div>
@@ -815,7 +909,6 @@ function getMyCardClickable(cardIndex) {
   if (gameState.turnPhase === 'drawn' || gameState.turnPhase === 'discard_swap') return true;
   if (gameState.powerState && gameState.powerState.type === 'peek') return true;
   if (gameState.powerState && gameState.powerState.type === 'swap' && gameState.powerState.step === 'select_own') return true;
-  if (gameState.powerState && gameState.powerState.type === 'peek_spy_swap' && gameState.powerState.step === 'peek_own') return true;
   return false;
 }
 
@@ -841,13 +934,12 @@ function onMyCardClick(cardIndex) {
   if (gameState.turnPhase === 'drawn' || gameState.turnPhase === 'discard_swap') { sendAction('swap-card', { cardIndex }); return; }
   if (gameState.powerState && gameState.powerState.type === 'peek') { sendAction('use-power', { targetPlayerIndex: gameState.myIndex, targetCardIndex: cardIndex }); return; }
   if (gameState.powerState && gameState.powerState.type === 'swap' && gameState.powerState.step === 'select_own') { sendAction('use-power', { targetPlayerIndex: gameState.myIndex, targetCardIndex: cardIndex }); return; }
-  if (gameState.powerState && gameState.powerState.type === 'peek_spy_swap' && gameState.powerState.step === 'peek_own') { sendAction('use-power', { targetPlayerIndex: gameState.myIndex, targetCardIndex: cardIndex }); return; }
 }
 
 function onOpponentCardClick(playerIndex, cardIndex) {
   if (!gameState || !gameState.powerState) return;
   const power = gameState.powerState;
-  if (power.type === 'spy' || (power.type === 'swap' && power.step === 'select_opponent') || (power.type === 'peek_spy_swap' && power.step === 'spy_opponent')) {
+  if (power.type === 'spy' || (power.type === 'swap' && power.step === 'select_opponent')) {
     sendAction('use-power', { targetPlayerIndex: playerIndex, targetCardIndex: cardIndex });
   }
 }
@@ -913,20 +1005,6 @@ function renderStatus() {
     if (power.type === 'peek') msg.textContent = t('peekMsg');
     else if (power.type === 'spy') msg.textContent = t('spyMsg');
     else if (power.type === 'swap') msg.textContent = power.step === 'select_own' ? t('swapOwnMsg') : t('swapOppMsg');
-    else if (power.type === 'peek_spy_swap') {
-      if (power.step === 'peek_own') msg.textContent = t('kingPeekMsg');
-      else if (power.step === 'spy_opponent') msg.textContent = t('kingSpyMsg');
-      else if (power.step === 'decide_swap') {
-        msg.textContent = t('kingSwapMsg');
-        btns.innerHTML = `
-          <button class="btn btn-primary btn-small" id="btn-do-swap">${t('doSwap')}</button>
-          <button class="btn btn-secondary btn-small" id="btn-skip-swap">${t('keepCard')}</button>
-        `;
-        $('btn-do-swap').addEventListener('click', () => sendAction('confirm-peek-spy-swap'));
-        $('btn-skip-swap').addEventListener('click', () => sendAction('skip-power'));
-        return;
-      }
-    }
     btns.innerHTML = `<button class="btn btn-secondary btn-small" id="btn-skip-power">${t('skipPower')}</button>`;
     $('btn-skip-power').addEventListener('click', () => sendAction('skip-power'));
   }
