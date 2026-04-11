@@ -328,6 +328,34 @@ input::placeholder { color: var(--text-dim); }
   border-color: var(--gold-dim);
   box-shadow: 0 0 0 1px var(--gold-dim);
 }
+
+/* Pulsing dot before active name */
+.seat-name.active-turn::before {
+  content: '';
+  display: inline-block;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--gold);
+  margin-right: 5px;
+  vertical-align: middle;
+  animation: dot-pulse 1.2s ease-in-out infinite;
+}
+@keyframes dot-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.6); }
+}
+
+/* Glow ring around the entire active seat */
+.seat.active-seat {
+  border-radius: 12px;
+  box-shadow: 0 0 0 2px var(--gold), 0 0 20px rgba(200,164,56,0.45);
+  animation: seat-glow 2s ease-in-out infinite;
+}
+@keyframes seat-glow {
+  0%, 100% { box-shadow: 0 0 0 2px var(--gold),       0 0 14px rgba(200,164,56,0.35); }
+  50%       { box-shadow: 0 0 0 2px var(--gold-light), 0 0 24px rgba(200,164,56,0.6); }
+}
+
 .seat-name .cabo-tag { color: var(--roof-light); font-weight: 700; margin-left: 0.3rem; }
 
 .seat-cards { display: flex; gap: 4px; justify-content: center; }
@@ -469,11 +497,26 @@ input::placeholder { color: var(--text-dim); }
   font-weight: 500;
   transition: all 0.2s;
 }
+#my-area.active-turn {
+  border-radius: 12px;
+  box-shadow: 0 0 0 2px var(--gold), 0 0 20px rgba(200,164,56,0.45);
+  animation: seat-glow 2s ease-in-out infinite;
+}
 #my-area.active-turn #my-name-tag {
   color: var(--gold); font-weight: 700;
   background: rgba(200,164,56,0.18);
   border-color: var(--gold-dim);
   box-shadow: 0 0 0 1px var(--gold-dim);
+}
+#my-area.active-turn #my-name-tag::before {
+  content: '';
+  display: inline-block;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--gold);
+  margin-right: 5px;
+  vertical-align: middle;
+  animation: dot-pulse 1.2s ease-in-out infinite;
 }
 #my-cards { display: flex; gap: 6px; justify-content: center; }
 
@@ -487,30 +530,27 @@ input::placeholder { color: var(--text-dim); }
 .card-large { width: 88px; height: 123px; border-radius: 12px; }
 .card-small { width: 50px; height: 70px; border-radius: 8px; }
 
-/* Card Back — deep forest */
+/* Card Back — clean placeholder (artwork goes here later) */
 .card-back {
-  background: var(--card-back);
+  background: linear-gradient(145deg, #cfc5b0, #bdb098);
   box-shadow: 0 2px 8px var(--card-shadow);
+  border: 1.5px solid rgba(255,255,255,0.12);
 }
+/* Placeholder inner border — remove once real artwork is applied */
 .card-back-design {
   width: 100%; height: 100%;
-  border-radius: 10px;
-  background:
-    repeating-linear-gradient( 45deg, transparent, transparent 7px, rgba(255,255,255,0.04) 7px, rgba(255,255,255,0.04) 8px),
-    repeating-linear-gradient(-45deg, transparent, transparent 7px, rgba(255,255,255,0.04) 7px, rgba(255,255,255,0.04) 8px);
+  border-radius: inherit;
   display: flex; align-items: center; justify-content: center;
 }
 .card-back-border {
-  border: 2px solid var(--gold-dim);
-  border-radius: 8px; padding: 4px;
-  width: calc(100% - 8px); height: calc(100% - 8px);
-  display: flex; align-items: center; justify-content: center;
+  width: calc(100% - 10px); height: calc(100% - 10px);
+  border: 1.5px dashed rgba(255,255,255,0.22);
+  border-radius: 7px;
 }
-.card-back-pattern { font-size: 1.3rem; opacity: 0.65; }
+.card-back-pattern { display: none; }
 
-.card-small .card-back-design { border-radius: 8px; }
-.card-small .card-back-border { border-radius: 6px; padding: 2px; }
-.card-small .card-back-pattern { font-size: 0.85rem; }
+.card-small .card-back-border { border-radius: 5px; width: calc(100% - 8px); height: calc(100% - 8px); }
+.card-large .card-back-border { border-radius: 9px; }
 
 /* Card Face — warm parchment */
 .card-face {

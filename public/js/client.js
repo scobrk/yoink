@@ -798,7 +798,7 @@ function renderOpponents() {
     }).join('');
 
     const seatEl = document.createElement('div');
-    seatEl.className = `seat ${posClass}`;
+    seatEl.className = `seat ${posClass}${isActive ? ' active-seat' : ''}`;
     seatEl.dataset.playerIndex = pIndex;
     seatEl.innerHTML = `
       <div class="seat-name ${isActive ? 'active-turn' : ''}">${p.name}${botTag}${caboTag}</div>
