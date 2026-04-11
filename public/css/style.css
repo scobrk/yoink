@@ -634,6 +634,76 @@ input::placeholder { color: var(--text-dim); }
 }
 .rules-fab:hover { background: var(--timber); }
 
+/* Language toggle FAB */
+.lang-fab {
+  position: fixed;
+  bottom: 1rem;
+  right: 3.5rem;
+  height: 36px;
+  padding: 0 0.6rem;
+  border-radius: 18px;
+  background: var(--timber-light);
+  color: var(--text-dim);
+  border: 1px solid rgba(255,255,255,0.12);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-family: inherit;
+}
+.lang-fab:hover { background: var(--timber); color: var(--text); }
+.lang-fab .lang-active { color: var(--gold); }
+
+/* Score history table */
+#scores-panel {
+  max-height: 60dvh;
+  overflow-y: auto;
+}
+.score-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  margin-top: 0.25rem;
+}
+.score-table th {
+  color: var(--text-dim);
+  font-weight: 600;
+  padding: 3px 5px;
+  text-align: center;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.score-table th:first-child { text-align: left; }
+.score-table td {
+  padding: 3px 5px;
+  text-align: center;
+}
+.score-table td:first-child { text-align: left; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.score-table tr.me td { color: var(--gold-light); }
+.score-table .col-total {
+  font-weight: 700;
+  border-left: 1px solid rgba(255,255,255,0.1);
+  color: var(--text);
+}
+.score-table tr.me .col-total { color: var(--gold); }
+.score-table .over-100 { color: var(--roof-light); }
+
+/* Game-over highlight in reveal */
+.reveal-winner-banner {
+  font-family: 'Cinzel', serif;
+  color: var(--gold);
+  text-align: center;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background: rgba(201,168,76,0.1);
+  border-radius: 8px;
+  border: 1px solid var(--gold-dim);
+}
+
 /* ===== Responsive ===== */
 @media (min-width: 600px) {
   .card { width: 68px; height: 96px; }

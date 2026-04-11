@@ -48,6 +48,8 @@ class CaboGame {
     this.peeksDone = {};
     this.round = 1;
     this.roundScores = [];
+    this.scoreHistory = []; // per-round deltas: [[p0r1, p1r1,...], [p0r2,...], ...]
+    this.gameOver = false;
   }
 
   addPlayer(id, name) {
@@ -128,6 +130,8 @@ class CaboGame {
       powerState: this.currentPlayerIndex === playerIndex ? this.powerState : null,
       peeksLeft: this.state === 'peeking' ? (2 - (this.peeksDone[playerId] || 0)) : 0,
       roundScores: this.roundScores,
+      scoreHistory: this.scoreHistory,
+      gameOver: this.gameOver,
       players: this.players.map((p, i) => ({
         name: p.name,
         cardCount: p.cards.length,
@@ -480,6 +484,7 @@ class CaboGame {
 
   playAgain() {
     if (this.state !== 'reveal') return null;
+    if (this.gameOver) return null; // game ended, must go to lobby
     this.round++;
     return this.startRound();
   }
@@ -489,6 +494,8 @@ class CaboGame {
     this.state = 'lobby';
     this.players.forEach(p => { p.score = 0; });
     this.round = 1;
+    this.scoreHistory = [];
+    this.gameOver = false;
     return { broadcast: true };
   }
 
@@ -527,8 +534,13 @@ class CaboGame {
     }
 
     this.roundScores = roundScores;
+    this.scoreHistory.push([...roundScores]);
+
     this.players.forEach((p, i) => {
       p.score += roundScores[i];
     });
+
+    // Game over when any player reaches 100+
+    this.gameOver = this.players.some(p => p.score >= 100);
   }
 }

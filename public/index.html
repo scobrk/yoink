@@ -10,30 +10,33 @@
 </head>
 <body>
 
+  <!-- Language toggle (always visible) -->
+  <button id="lang-toggle" class="lang-fab" title="Toggle language">EN</button>
+
   <!-- Lobby Screen -->
   <div id="lobby-screen" class="screen active">
     <div class="lobby-container">
       <div class="logo">
         <div class="logo-beaver">&#x1F9AB;</div>
         <h1>Cabo <span class="logo-sub">an der Riss</span></h1>
-        <p class="tagline">Ein Kartenspiel aus Biberach</p>
+        <p class="tagline" data-i18n="tagline">Ein Kartenspiel aus Biberach</p>
       </div>
 
       <div id="join-create">
-        <input type="text" id="player-name" placeholder="Dein Name" maxlength="12" autocomplete="off">
-        <button id="create-btn" class="btn btn-primary">Raum erstellen</button>
-        <div class="divider"><span>oder</span></div>
-        <input type="text" id="room-code-input" placeholder="Raum-Code" maxlength="4" autocomplete="off">
-        <button id="join-btn" class="btn btn-secondary">Beitreten</button>
+        <input type="text" id="player-name" data-i18n-placeholder="namePlaceholder" placeholder="Dein Name" maxlength="12" autocomplete="off">
+        <button id="create-btn" class="btn btn-primary" data-i18n="createRoom">Raum erstellen</button>
+        <div class="divider"><span data-i18n="or">oder</span></div>
+        <input type="text" id="room-code-input" data-i18n-placeholder="roomCodePlaceholder" placeholder="Raum-Code" maxlength="4" autocomplete="off">
+        <button id="join-btn" class="btn btn-secondary" data-i18n="join">Beitreten</button>
       </div>
 
       <div id="waiting-room" style="display:none">
         <h2>Raum: <span id="room-code-display"></span></h2>
-        <p class="waiting-hint">Teile den Code mit deinen Mitspielern</p>
+        <p class="waiting-hint" data-i18n="shareCode">Teile den Code mit deinen Mitspielern</p>
         <ul id="player-list"></ul>
         <div id="lobby-actions" style="display:none">
-          <button id="add-bot-btn" class="btn btn-secondary btn-small">Bot hinzuf&uuml;gen</button>
-          <button id="start-btn" class="btn btn-primary">Spiel starten</button>
+          <button id="add-bot-btn" class="btn btn-secondary btn-small" data-i18n="addBot">Bot hinzuf&uuml;gen</button>
+          <button id="start-btn" class="btn btn-primary" data-i18n="startGame">Spiel starten</button>
         </div>
         <p id="waiting-msg" class="waiting-hint">Warte auf den Gastgeber...</p>
       </div>
@@ -52,17 +55,15 @@
     </div>
 
     <div id="scores-panel" style="display:none">
-      <h3>Punktestand</h3>
+      <h3 data-i18n="scoresTitle">Punktestand</h3>
       <div id="scores-list"></div>
     </div>
 
     <!-- Poker Table Layout -->
     <div id="game-table">
 
-      <!-- Opponent seats: JS populates .seat elements here -->
       <div id="opponents-area"></div>
 
-      <!-- Oval felt table with deck + discard -->
       <div id="table-felt">
         <div id="table-piles">
           <div id="deck-area">
@@ -74,32 +75,29 @@
               </div>
               <span id="deck-count" class="badge"></span>
             </div>
-            <span class="pile-label">Stapel</span>
+            <span class="pile-label" data-i18n="deckLabel">Stapel</span>
           </div>
           <div id="discard-area">
             <div id="discard" class="card empty-pile">
-              <span class="empty-label">Leer</span>
+              <span class="empty-label" data-i18n="emptyPile">Leer</span>
             </div>
-            <span class="pile-label">Ablage</span>
+            <span class="pile-label" data-i18n="discardLabel">Ablage</span>
           </div>
         </div>
       </div>
 
-      <!-- Drawn card: shown between table and my area -->
       <div id="drawn-card-area" style="display:none">
-        <span id="drawn-label">Gezogene Karte:</span>
+        <span id="drawn-label">Gezogen:</span>
         <div id="drawn-card" class="card"></div>
       </div>
 
-      <!-- My seat -->
       <div id="my-area">
         <div id="my-name-tag"></div>
         <div id="my-cards"></div>
       </div>
 
-    </div><!-- #game-table -->
+    </div>
 
-    <!-- Control bar: status message + action buttons -->
     <div id="status-bar">
       <div id="status-message"></div>
       <div id="action-buttons"></div>
@@ -109,12 +107,12 @@
       <span>CABO!</span>
     </div>
 
-  </div><!-- #game-screen -->
+  </div>
 
   <!-- Reveal Overlay -->
   <div id="reveal-overlay" style="display:none">
     <div class="reveal-content">
-      <h2>Runde vorbei!</h2>
+      <h2 id="reveal-title">Runde vorbei!</h2>
       <div id="reveal-results"></div>
       <div id="reveal-buttons"></div>
     </div>
@@ -132,31 +130,8 @@
   <div id="rules-overlay" style="display:none">
     <div class="rules-content">
       <button id="rules-close" class="btn-close">&times;</button>
-      <h2>Spielregeln</h2>
-      <div class="rules-body">
-        <h3>Ziel</h3>
-        <p>Habe die niedrigste Summe an Kartenwerten in deiner Hand.</p>
-        <h3>Kartenwerte</h3>
-        <p>Karten haben Werte von <strong>0 bis 13</strong> (56 Karten, je 4&times; jeder Wert).</p>
-        <h3>Spielablauf</h3>
-        <p>Zu Beginn siehst du 2 deiner 4 Karten. Dann reihum:</p>
-        <ul>
-          <li><strong>Ziehen:</strong> Nimm vom Stapel oder der Ablage</li>
-          <li><strong>Tauschen:</strong> Ersetze eine deiner Karten</li>
-          <li><strong>Ablegen:</strong> Wirf die gezogene Karte ab (Spezialfunktion m&ouml;glich)</li>
-        </ul>
-        <h3>Karten ablegen (Slammen)</h3>
-        <p>Vor dem Ziehen kannst du Karten aus deiner Hand ablegen, die denselben Wert wie die oberste Ablagekarte haben. Mehrere auf einmal m&ouml;glich! Falsch? Strafkarte vom Stapel.</p>
-        <h3>Spezialkarten (beim Ablegen aktiviert)</h3>
-        <ul>
-          <li><strong>7, 8 &mdash; PEEK:</strong> Sieh dir eine eigene Karte an</li>
-          <li><strong>9, 10 &mdash; SPY:</strong> Sieh dir eine Karte eines Mitspielers an</li>
-          <li><strong>11, 12 &mdash; SWAP:</strong> Tausche blind eine Karte mit einem Mitspieler</li>
-          <li><strong>13 &mdash; KING:</strong> Sieh eigene + fremde Karte, dann optional tauschen</li>
-        </ul>
-        <h3>Cabo rufen</h3>
-        <p>Glaubst du die niedrigste Summe zu haben, rufe <strong>CABO</strong>. Jeder andere Spieler hat noch einen Zug. Liegst du falsch: +10 Strafpunkte!</p>
-      </div>
+      <h2 data-i18n="rulesTitle">Spielregeln</h2>
+      <div id="rules-body" class="rules-body"></div>
     </div>
   </div>
 

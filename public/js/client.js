@@ -1,7 +1,5 @@
 // ===== Cabo an der Riss — Client =====
 // Uses PeerJS (WebRTC) for peer-to-peer multiplayer.
-// The room creator ("host") runs the CaboGame engine in their browser.
-// Other players connect to the host and send actions / receive state.
 
 const PEER_PREFIX = 'cabo-an-der-riss-';
 
@@ -25,6 +23,241 @@ const BOT_DELAY = 1200;
 
 const $ = (id) => document.getElementById(id);
 
+// ===== Translations =====
+const TRANSLATIONS = {
+  de: {
+    tagline: 'Ein Kartenspiel aus Biberach',
+    namePlaceholder: 'Dein Name',
+    createRoom: 'Raum erstellen',
+    or: 'oder',
+    roomCodePlaceholder: 'Raum-Code',
+    join: 'Beitreten',
+    shareCode: 'Teile den Code mit deinen Mitspielern',
+    addBot: 'Bot hinzuf\u00fcgen',
+    startGame: 'Spiel starten',
+    waitingHost: 'Warte auf den Gastgeber...',
+    waitingPlayers: 'Warte auf Mitspieler oder f\u00fcge Bots hinzu...',
+    hostBadge: 'Gastgeber',
+    enterName: 'Bitte Namen eingeben',
+    enterCode: 'Bitte Raum-Code eingeben',
+    noBotsLeft: 'Keine Bot-Namen mehr frei',
+    connError: 'Verbindungsfehler. Bitte erneut versuchen.',
+    roomNotFound: 'Raum nicht gefunden',
+    connLost: 'Verbindung zum Gastgeber verloren',
+    scoresTitle: 'Punkte',
+    roundHistory: 'Runde',
+    totalCol: '\u03a3',
+    deckLabel: 'Stapel',
+    discardLabel: 'Ablage',
+    emptyPile: 'Leer',
+    rulesTitle: 'Spielregeln',
+    room: (c) => `Raum: ${c}`,
+    roundN: (n) => `Runde ${n}`,
+    drawn: 'Gezogen:',
+    fromDiscard: 'Von Ablage:',
+    peekN: (n) => `Sieh dir ${n} deiner Karten an`,
+    waitOthers: 'Warte auf andere Spieler\u2026',
+    turnOf: (name) => `${name} ist am Zug`,
+    lastRound: ' (letzte Runde!)',
+    yourTurn: 'Du bist dran',
+    lastRoundBang: ' \u2014 Letzte Runde!',
+    selectSlam: (n) => `W\u00e4hle Karten zum Ablegen (${n} gew\u00e4hlt)`,
+    slam: 'Slammen',
+    doSlam: 'Ablegen!',
+    cancelSlam: 'Abbrechen',
+    drawDeck: 'Stapel ziehen',
+    drawDiscard: 'Ablage nehmen',
+    discardCard: 'Ablegen',
+    swapOrDiscard: 'Tauschen oder ablegen?',
+    whichCard: 'Welche Karte ersetzen?',
+    peekMsg: 'PEEK \u2014 Tippe auf eine deiner Karten',
+    spyMsg: 'SPY \u2014 Tippe auf eine Karte eines Mitspielers',
+    swapOwnMsg: 'SWAP \u2014 Tippe auf eine deiner Karten',
+    swapOppMsg: 'SWAP \u2014 Tippe auf eine Karte eines Mitspielers',
+    kingPeekMsg: 'KING \u2014 Sieh dir eine eigene Karte an',
+    kingSpyMsg: 'KING \u2014 Sieh dir eine Karte eines Mitspielers an',
+    kingSwapMsg: 'KING \u2014 Karten tauschen?',
+    doSwap: 'Tauschen',
+    keepCard: 'Behalten',
+    skipPower: 'Verzichten',
+    roundOver: 'Runde vorbei!',
+    gameOverTitle: 'Spiel vorbei!',
+    gameWinner: (name) => `\u{1F3C6} ${name} gewinnt!`,
+    penalty: '+10 Strafe (Cabo verfehlt)',
+    roundPoints: (n) => `Runde: +${n}`,
+    totalPoints: (n) => `Gesamt: ${n}`,
+    nextRound: 'N\u00e4chste Runde',
+    backLobby: 'Zur\u00fcck zur Lobby',
+    waitHost: 'Warte auf den Gastgeber\u2026',
+    cardSwapped: (n) => `Karte ${n} wurde getauscht!`,
+    slamSuccess: (name, n) => `${name} hat ${n} Karte(n) abgelegt!`,
+    slamFail: (name) => `${name}: Karte passt nicht! Strafkarte.`,
+    disconnected: (name) => `${name} hat das Spiel verlassen`,
+    yourCardN: (n) => `Deine Karte ${n}`,
+    theirCardN: (name, n) => `${name}s Karte ${n}`,
+    rulesBody: `
+      <h3>Ziel</h3>
+      <p>Habe die niedrigste Summe an Kartenwerten. Ein Spiel endet, sobald ein Spieler <strong>100 Punkte</strong> erreicht. Gewinner ist, wer dann die wenigsten Punkte hat.</p>
+      <h3>Kartenwerte</h3>
+      <p>Karten haben Werte von <strong>0 bis 13</strong> (56 Karten, je 4&times; jeder Wert).</p>
+      <h3>Spielablauf</h3>
+      <p>Zu Beginn siehst du 2 deiner 4 Karten. Dann reihum:</p>
+      <ul>
+        <li><strong>Ziehen:</strong> Nimm vom Stapel oder der Ablage</li>
+        <li><strong>Tauschen:</strong> Ersetze eine deiner Karten</li>
+        <li><strong>Ablegen:</strong> Wirf die gezogene Karte ab (Spezialfunktion m&ouml;glich)</li>
+      </ul>
+      <h3>Slammen</h3>
+      <p>Vor dem Ziehen kannst du Karten mit demselben Wert wie die Ablage aus deiner Hand legen. Falsch? Strafkarte.</p>
+      <h3>Spezialkarten</h3>
+      <ul>
+        <li><strong>7, 8 &mdash; PEEK:</strong> Sieh dir eine eigene Karte an</li>
+        <li><strong>9, 10 &mdash; SPY:</strong> Sieh dir eine Karte eines Mitspielers an</li>
+        <li><strong>11, 12 &mdash; SWAP:</strong> Tausche blind eine Karte mit einem Mitspieler</li>
+        <li><strong>13 &mdash; KING:</strong> Sieh eigene + fremde Karte, dann optional tauschen</li>
+      </ul>
+      <h3>Cabo rufen</h3>
+      <p>Glaube, die niedrigste Summe zu haben? Ruf <strong>CABO</strong>. Jeder andere hat noch einen Zug. Liegst du falsch: +10 Strafpunkte!</p>
+    `,
+  },
+  en: {
+    tagline: 'A card game from Biberach',
+    namePlaceholder: 'Your Name',
+    createRoom: 'Create Room',
+    or: 'or',
+    roomCodePlaceholder: 'Room Code',
+    join: 'Join',
+    shareCode: 'Share the code with your friends',
+    addBot: 'Add Bot',
+    startGame: 'Start Game',
+    waitingHost: 'Waiting for host...',
+    waitingPlayers: 'Waiting for players or add bots...',
+    hostBadge: 'Host',
+    enterName: 'Please enter a name',
+    enterCode: 'Please enter a room code',
+    noBotsLeft: 'No more bot names available',
+    connError: 'Connection error. Please try again.',
+    roomNotFound: 'Room not found',
+    connLost: 'Lost connection to host',
+    scoresTitle: 'Scores',
+    roundHistory: 'Round',
+    totalCol: '\u03a3',
+    deckLabel: 'Deck',
+    discardLabel: 'Discard',
+    emptyPile: 'Empty',
+    rulesTitle: 'Rules',
+    room: (c) => `Room: ${c}`,
+    roundN: (n) => `Round ${n}`,
+    drawn: 'Drawn:',
+    fromDiscard: 'From discard:',
+    peekN: (n) => `Look at ${n} of your cards`,
+    waitOthers: 'Waiting for other players\u2026',
+    turnOf: (name) => `${name}'s turn`,
+    lastRound: ' (last round!)',
+    yourTurn: 'Your turn',
+    lastRoundBang: ' \u2014 Last round!',
+    selectSlam: (n) => `Select cards to slam (${n} selected)`,
+    slam: 'Slam',
+    doSlam: 'Slam!',
+    cancelSlam: 'Cancel',
+    drawDeck: 'Draw from deck',
+    drawDiscard: 'Take from discard',
+    discardCard: 'Discard',
+    swapOrDiscard: 'Swap or discard?',
+    whichCard: 'Which card to replace?',
+    peekMsg: 'PEEK \u2014 Tap one of your cards',
+    spyMsg: 'SPY \u2014 Tap an opponent\'s card',
+    swapOwnMsg: 'SWAP \u2014 Tap one of your cards',
+    swapOppMsg: 'SWAP \u2014 Tap an opponent\'s card',
+    kingPeekMsg: 'KING \u2014 Look at one of your own cards',
+    kingSpyMsg: 'KING \u2014 Look at an opponent\'s card',
+    kingSwapMsg: 'KING \u2014 Swap the cards?',
+    doSwap: 'Swap',
+    keepCard: 'Keep',
+    skipPower: 'Skip',
+    roundOver: 'Round over!',
+    gameOverTitle: 'Game over!',
+    gameWinner: (name) => `\u{1F3C6} ${name} wins!`,
+    penalty: '+10 penalty (Cabo missed)',
+    roundPoints: (n) => `Round: +${n}`,
+    totalPoints: (n) => `Total: ${n}`,
+    nextRound: 'Next Round',
+    backLobby: 'Back to Lobby',
+    waitHost: 'Waiting for host\u2026',
+    cardSwapped: (n) => `Card ${n} was swapped!`,
+    slamSuccess: (name, n) => `${name} slammed ${n} card(s)!`,
+    slamFail: (name) => `${name}: Wrong card! Penalty drawn.`,
+    disconnected: (name) => `${name} left the game`,
+    yourCardN: (n) => `Your card ${n}`,
+    theirCardN: (name, n) => `${name}'s card ${n}`,
+    rulesBody: `
+      <h3>Goal</h3>
+      <p>Have the lowest sum of card values. A game ends when any player reaches <strong>100 points</strong>. The player with the fewest points wins.</p>
+      <h3>Card Values</h3>
+      <p>Cards have values from <strong>0 to 13</strong> (56 cards, 4 of each value).</p>
+      <h3>Turn Structure</h3>
+      <p>At the start you peek at 2 of your 4 cards. Then each turn:</p>
+      <ul>
+        <li><strong>Draw:</strong> Take from the deck or discard pile</li>
+        <li><strong>Swap:</strong> Replace one of your cards with the drawn card</li>
+        <li><strong>Discard:</strong> Discard the drawn card (may trigger a power)</li>
+      </ul>
+      <h3>Slamming</h3>
+      <p>Before drawing, you can slam cards from your hand that match the discard top value. Wrong? Draw a penalty card.</p>
+      <h3>Power Cards</h3>
+      <ul>
+        <li><strong>7, 8 &mdash; PEEK:</strong> Look at one of your own cards</li>
+        <li><strong>9, 10 &mdash; SPY:</strong> Look at an opponent's card</li>
+        <li><strong>11, 12 &mdash; SWAP:</strong> Blindly swap a card with an opponent</li>
+        <li><strong>13 &mdash; KING:</strong> Look at your card + opponent's card, then optionally swap</li>
+      </ul>
+      <h3>Calling Cabo</h3>
+      <p>Think you have the lowest total? Call <strong>CABO</strong>. Everyone else gets one more turn. Wrong call: +10 penalty!</p>
+    `,
+  }
+};
+
+let lang = localStorage.getItem('cabo-lang') || 'de';
+
+function t(key, ...args) {
+  const val = TRANSLATIONS[lang][key];
+  if (typeof val === 'function') return val(...args);
+  return val !== undefined ? val : key;
+}
+
+function applyLanguage() {
+  // Update lang toggle label
+  const toggle = $('lang-toggle');
+  if (toggle) {
+    const other = lang === 'de' ? 'en' : 'de';
+    toggle.innerHTML = `<span class="lang-active">${lang.toUpperCase()}</span> / ${other.toUpperCase()}`;
+  }
+
+  // Update all data-i18n elements
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    el.textContent = t(key);
+  });
+
+  // Update placeholder attributes
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    el.placeholder = t(el.dataset.i18nPlaceholder);
+  });
+
+  // Update rules body
+  const rulesBody = $('rules-body');
+  if (rulesBody) rulesBody.innerHTML = t('rulesBody');
+
+  // Re-render game if active
+  if (gameState) renderGame();
+}
+
+function toggleLanguage() {
+  lang = lang === 'de' ? 'en' : 'de';
+  localStorage.setItem('cabo-lang', lang);
+  applyLanguage();
+}
+
 // ===== Utilities =====
 function generateRoomCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -37,13 +270,11 @@ function generatePlayerId() {
   return 'p-' + Math.random().toString(36).substr(2, 9);
 }
 
-// ===== Screen Management =====
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   $(id).classList.add('active');
 }
 
-// ===== Toast =====
 let toastTimer = null;
 function showToast(msg) {
   const toast = $('error-toast');
@@ -54,7 +285,6 @@ function showToast(msg) {
 }
 
 // ===== Card HTML Builders =====
-
 function powerClass(value) {
   if (value === 7 || value === 8)   return 'power-peek';
   if (value === 9 || value === 10)  return 'power-spy';
@@ -73,53 +303,43 @@ function powerLabel(value) {
 
 function buildCardFace(card, extraClass) {
   const v = card.value;
-  const pClass = powerClass(v);
   const label = powerLabel(v);
-  const labelHtml = label ? `<span class="card-power-label">${label}</span>` : '';
-  return `<div class="card card-face ${pClass} ${extraClass || ''}">
+  return `<div class="card card-face ${powerClass(v)} ${extraClass || ''}">
     <span class="card-num">${v}</span>
-    ${labelHtml}
+    ${label ? `<span class="card-power-label">${label}</span>` : ''}
   </div>`;
 }
 
 function buildCardBack(extraClass) {
   return `<div class="card card-back ${extraClass || ''}">
-    <div class="card-back-design">
-      <div class="card-back-border">
-        <div class="card-back-pattern">\u{1F9AB}</div>
-      </div>
-    </div>
+    <div class="card-back-design"><div class="card-back-border"><div class="card-back-pattern">\u{1F9AB}</div></div></div>
   </div>`;
 }
 
 // ===== Network: Send action to host =====
 function sendAction(action, data) {
-  const msg = { type: 'action', action, data: data || {} };
-  if (isHost) {
-    handleActionOnHost(myPlayerId, action, data || {});
-  } else if (hostConn && hostConn.open) {
-    hostConn.send(msg);
-  }
+  if (isHost) handleActionOnHost(myPlayerId, action, data || {});
+  else if (hostConn && hostConn.open) hostConn.send({ type: 'action', action, data: data || {} });
 }
 
-// ===== Host: Process an action and broadcast =====
+// ===== Host: Process action and broadcast =====
 function handleActionOnHost(playerId, action, data) {
   if (!game) return;
   let result = null;
 
   switch (action) {
-    case 'peek-card':           result = game.peekCard(playerId, data.cardIndex); break;
-    case 'draw-deck':           result = game.drawDeck(playerId); break;
-    case 'draw-discard':        result = game.drawDiscard(playerId); break;
-    case 'swap-card':           result = game.swapCard(playerId, data.cardIndex); break;
-    case 'discard-drawn':       result = game.discardDrawn(playerId); break;
-    case 'use-power':           result = game.usePower(playerId, data.targetPlayerIndex, data.targetCardIndex); break;
-    case 'skip-power':          result = game.skipPower(playerId); break;
-    case 'slam-cards':          result = game.slamCards(playerId, data.cardIndices); break;
+    case 'peek-card':             result = game.peekCard(playerId, data.cardIndex); break;
+    case 'draw-deck':             result = game.drawDeck(playerId); break;
+    case 'draw-discard':          result = game.drawDiscard(playerId); break;
+    case 'swap-card':             result = game.swapCard(playerId, data.cardIndex); break;
+    case 'discard-drawn':         result = game.discardDrawn(playerId); break;
+    case 'use-power':             result = game.usePower(playerId, data.targetPlayerIndex, data.targetCardIndex); break;
+    case 'skip-power':            result = game.skipPower(playerId); break;
+    case 'slam-cards':            result = game.slamCards(playerId, data.cardIndices); break;
     case 'confirm-peek-spy-swap': result = game.confirmPeekSpySwap(playerId); break;
-    case 'call-cabo':           result = game.callCabo(playerId); break;
-    case 'play-again':          result = game.playAgain(); break;
-    case 'back-to-lobby':       result = game.backToLobby(); break;
+    case 'call-cabo':             result = game.callCabo(playerId); break;
+    case 'play-again':            result = game.playAgain(); break;
+    case 'back-to-lobby':         result = game.backToLobby(); break;
   }
 
   if (!result) return;
@@ -171,7 +391,7 @@ function sendEventToPlayer(playerId, evtType, data) {
   }
 }
 
-// ===== Host: Handle incoming guest connection =====
+// ===== Host: Guest connection handling =====
 function onGuestConnected(conn) {
   conn.on('open', () => {
     conn.on('data', (msg) => {
@@ -212,33 +432,18 @@ function onGuestConnected(conn) {
   });
 }
 
-// ===== Event Handlers =====
+// ===== Events =====
 function handleEvent(evtType, data) {
   switch (evtType) {
-    case 'cabo-called':
-      showCaboBanner();
-      break;
-    case 'peek-result':
-      showPeekOverlay(data.card, `Deine Karte ${data.cardIndex + 1}`);
-      break;
+    case 'cabo-called':       showCaboBanner(); break;
+    case 'peek-result':       showPeekOverlay(data.card, t('yourCardN', data.cardIndex + 1)); break;
     case 'spy-result':
-      if (gameState) {
-        const name = gameState.players[data.playerIndex].name;
-        showPeekOverlay(data.card, `${name}s Karte ${data.cardIndex + 1}`);
-      }
+      if (gameState) showPeekOverlay(data.card, t('theirCardN', gameState.players[data.playerIndex].name, data.cardIndex + 1));
       break;
-    case 'card-swapped':
-      showToast(`Karte ${data.cardIndex + 1} wurde getauscht!`);
-      break;
-    case 'slam-success':
-      showToast(`${data.playerName} hat ${data.count} Karte(n) abgelegt!`);
-      break;
-    case 'slam-fail':
-      showToast(`${data.playerName}: Karte passt nicht! Strafkarte gezogen.`);
-      break;
-    case 'player-disconnected':
-      showToast(`${data.name} hat das Spiel verlassen`);
-      break;
+    case 'card-swapped':      showToast(t('cardSwapped', data.cardIndex + 1)); break;
+    case 'slam-success':      showToast(t('slamSuccess', data.playerName, data.count)); break;
+    case 'slam-fail':         showToast(t('slamFail', data.playerName)); break;
+    case 'player-disconnected': showToast(t('disconnected', data.name)); break;
   }
 }
 
@@ -246,7 +451,7 @@ function showCaboBanner() {
   const banner = $('cabo-banner');
   banner.style.display = 'block';
   banner.style.animation = 'none';
-  banner.offsetHeight; // reflow
+  banner.offsetHeight;
   banner.style.animation = '';
   setTimeout(() => { banner.style.display = 'none'; }, 2200);
 }
@@ -255,35 +460,28 @@ function showPeekOverlay(card, label) {
   const overlay = $('peek-overlay');
   const peekCard = $('peek-card');
   const v = card.value;
-  peekCard.className = `card card-large card-face ${powerClass(v)}`;
   const lbl = powerLabel(v);
-  peekCard.innerHTML = `
-    <span class="card-num">${v}</span>
-    ${lbl ? `<span class="card-power-label">${lbl}</span>` : ''}
-  `;
+  peekCard.className = `card card-large card-face ${powerClass(v)}`;
+  peekCard.innerHTML = `<span class="card-num">${v}</span>${lbl ? `<span class="card-power-label">${lbl}</span>` : ''}`;
   $('peek-label').textContent = label;
   overlay.style.display = 'flex';
-
   if (peekTimeout) clearTimeout(peekTimeout);
   peekTimeout = setTimeout(() => { overlay.style.display = 'none'; }, 3000);
-  overlay.onclick = () => {
-    overlay.style.display = 'none';
-    if (peekTimeout) clearTimeout(peekTimeout);
-  };
+  overlay.onclick = () => { overlay.style.display = 'none'; if (peekTimeout) clearTimeout(peekTimeout); };
 }
 
 // ===== Lobby UI Events =====
 $('create-btn').addEventListener('click', () => {
   myName = $('player-name').value.trim();
-  if (!myName) return showToast('Bitte Namen eingeben');
+  if (!myName) return showToast(t('enterName'));
   createRoom();
 });
 
 $('join-btn').addEventListener('click', () => {
   myName = $('player-name').value.trim();
   const code = $('room-code-input').value.trim().toUpperCase();
-  if (!myName) return showToast('Bitte Namen eingeben');
-  if (!code) return showToast('Bitte Raum-Code eingeben');
+  if (!myName) return showToast(t('enterName'));
+  if (!code) return showToast(t('enterCode'));
   joinRoom(code);
 });
 
@@ -299,9 +497,8 @@ $('start-btn').addEventListener('click', () => {
 $('add-bot-btn').addEventListener('click', () => {
   if (!isHost || !game) return;
   const available = BOT_NAMES.filter(n => !game.players.find(p => p.name === n));
-  if (available.length === 0) return showToast('Keine Bot-Namen mehr frei');
-  const name = available[0];
-  const result = game.addBot(name);
+  if (available.length === 0) return showToast(t('noBotsLeft'));
+  const result = game.addBot(available[0]);
   if (result.error) return showToast(result.error);
   botIds.push(result.botId);
   broadcastGameState();
@@ -322,12 +519,13 @@ $('scores-toggle').addEventListener('click', () => {
   panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
 });
 
+$('lang-toggle').addEventListener('click', toggleLanguage);
+
 // ===== Create Room (Host) =====
 function createRoom() {
   roomCode = generateRoomCode();
   isHost = true;
   myPlayerId = generatePlayerId();
-
   game = new CaboGame();
   game.addPlayer(myPlayerId, myName);
 
@@ -349,14 +547,8 @@ function createRoom() {
   peer.on('connection', onGuestConnected);
 
   peer.on('error', (err) => {
-    if (err.type === 'unavailable-id') {
-      roomCode = generateRoomCode();
-      peer.destroy();
-      createRoom();
-    } else {
-      console.error('PeerJS error:', err);
-      showToast('Verbindungsfehler. Bitte erneut versuchen.');
-    }
+    if (err.type === 'unavailable-id') { roomCode = generateRoomCode(); peer.destroy(); createRoom(); }
+    else { console.error('PeerJS error:', err); showToast(t('connError')); }
   });
 }
 
@@ -375,9 +567,7 @@ function joinRoom(code) {
 
   peer.on('open', () => {
     hostConn = peer.connect(PEER_PREFIX + code, { reliable: true });
-
     hostConn.on('open', () => { hostConn.send({ type: 'join', name: myName }); });
-
     hostConn.on('data', (msg) => {
       if (msg.type === 'joined') {
         myPlayerId = msg.playerId;
@@ -396,20 +586,18 @@ function joinRoom(code) {
         showToast(msg.message);
       }
     });
-
     hostConn.on('close', () => {
-      showToast('Verbindung zum Gastgeber verloren');
+      showToast(t('connLost'));
       showScreen('lobby-screen');
       $('join-create').style.display = 'block';
       $('waiting-room').style.display = 'none';
     });
-
-    hostConn.on('error', () => { showToast('Verbindungsfehler'); });
+    hostConn.on('error', () => { showToast(t('connError')); });
   });
 
   peer.on('error', (err) => {
-    if (err.type === 'peer-unavailable') showToast('Raum nicht gefunden');
-    else { console.error('PeerJS error:', err); showToast('Verbindungsfehler'); }
+    if (err.type === 'peer-unavailable') showToast(t('roomNotFound'));
+    else { console.error('PeerJS error:', err); showToast(t('connError')); }
   });
 }
 
@@ -417,14 +605,8 @@ function joinRoom(code) {
 function renderFromState() {
   if (!gameState) return;
   if (gameState.turnPhase !== 'start') { slamMode = false; slamSelection = []; }
-
-  if (gameState.state === 'lobby') {
-    showScreen('lobby-screen');
-    renderLobby();
-  } else {
-    showScreen('game-screen');
-    renderGame();
-  }
+  if (gameState.state === 'lobby') { showScreen('lobby-screen'); renderLobby(); }
+  else { showScreen('game-screen'); renderGame(); }
 }
 
 // ===== Render Lobby =====
@@ -436,7 +618,7 @@ function renderLobby() {
 
   const list = $('player-list');
   list.innerHTML = gameState.players.map((p, i) => {
-    const hostBadge = i === 0 ? '<span class="host-badge">Gastgeber</span>' : '';
+    const hostBadge = i === 0 ? `<span class="host-badge">${t('hostBadge')}</span>` : '';
     const botBadge = p.isBot ? '<span class="host-badge">Bot</span>' : '';
     const meTag = p.isMe ? ' (Du)' : '';
     return `<li><span>${p.name}${meTag}</span>${botBadge}${hostBadge}</li>`;
@@ -449,10 +631,10 @@ function renderLobby() {
     $('start-btn').style.display = gameState.players.length >= 2 ? 'block' : 'none';
     $('add-bot-btn').style.display = gameState.players.length < 4 ? 'block' : 'none';
     $('waiting-msg').style.display = gameState.players.length < 2 ? 'block' : 'none';
-    $('waiting-msg').textContent = 'Warte auf Mitspieler oder f\u00fcge Bots hinzu...';
+    $('waiting-msg').textContent = t('waitingPlayers');
   } else {
     $('lobby-actions').style.display = 'none';
-    $('waiting-msg').textContent = 'Warte auf den Gastgeber...';
+    $('waiting-msg').textContent = t('waitingHost');
     $('waiting-msg').style.display = 'block';
   }
 }
@@ -471,14 +653,36 @@ function renderGame() {
 }
 
 function renderHeader() {
-  $('room-info').textContent = `Raum: ${gameState.roomCode}`;
-  $('round-info').textContent = `Runde ${gameState.round}`;
-  $('scores-list').innerHTML = gameState.players.map(p =>
-    `<div class="score-row ${p.isMe ? 'me' : ''}"><span>${p.name}</span><span>${p.score}</span></div>`
-  ).join('');
+  $('room-info').textContent = t('room', gameState.roomCode);
+  $('round-info').textContent = t('roundN', gameState.round);
+
+  // Score history table
+  const history = gameState.scoreHistory || [];
+  const players = gameState.players;
+  const numRounds = history.length;
+
+  let tableHTML = `<table class="score-table"><thead><tr>
+    <th></th>
+    ${history.map((_, i) => `<th>${t('roundHistory')} ${i + 1}</th>`).join('')}
+    <th class="col-total">${t('totalCol')}</th>
+  </tr></thead><tbody>`;
+
+  tableHTML += players.map(p => {
+    const total = p.score;
+    const over = total >= 100 ? ' over-100' : '';
+    const meClass = p.isMe ? ' me' : '';
+    return `<tr class="${meClass}">
+      <td>${p.name}</td>
+      ${history.map((round, i) => `<td>${round[players.indexOf(p)]}</td>`).join('')}
+      <td class="col-total${over}">${total}</td>
+    </tr>`;
+  }).join('');
+
+  tableHTML += '</tbody></table>';
+  $('scores-list').innerHTML = tableHTML;
 }
 
-// ===== Render Opponents (circular seats) =====
+// ===== Render Opponents =====
 function renderOpponents() {
   const area = $('opponents-area');
   const opponents = gameState.players.filter(p => !p.isMe);
@@ -492,8 +696,7 @@ function renderOpponents() {
 
     const cards = p.cards.map((card, j) => {
       const extra = getOpponentCardExtra(pIndex, j);
-      if (card.faceUp) return buildCardFace(card, 'card-small' + extra);
-      return buildCardBack('card-small' + extra);
+      return card.faceUp ? buildCardFace(card, 'card-small' + extra) : buildCardBack('card-small' + extra);
     }).join('');
 
     return `<div class="seat">
@@ -502,7 +705,6 @@ function renderOpponents() {
     </div>`;
   }).join('');
 
-  // Attach click handlers for power-target cards
   area.querySelectorAll('.card[data-player-index]').forEach(el => {
     el.addEventListener('click', () => {
       onOpponentCardClick(parseInt(el.dataset.playerIndex), parseInt(el.dataset.cardIndex));
@@ -513,16 +715,10 @@ function renderOpponents() {
 function getOpponentCardExtra(playerIndex, cardIndex) {
   if (!gameState.powerState || gameState.state !== 'playing') return '';
   const power = gameState.powerState;
-
-  if (power.type === 'spy' && power.step === 'select_target') {
-    return ` clickable card-highlight" data-player-index="${playerIndex}" data-card-index="${cardIndex}`;
-  }
-  if (power.type === 'swap' && power.step === 'select_opponent') {
-    return ` clickable card-highlight" data-player-index="${playerIndex}" data-card-index="${cardIndex}`;
-  }
-  if (power.type === 'peek_spy_swap' && power.step === 'spy_opponent') {
-    return ` clickable card-highlight" data-player-index="${playerIndex}" data-card-index="${cardIndex}`;
-  }
+  const attrs = ` clickable card-highlight" data-player-index="${playerIndex}" data-card-index="${cardIndex}`;
+  if (power.type === 'spy' && power.step === 'select_target') return attrs;
+  if (power.type === 'swap' && power.step === 'select_opponent') return attrs;
+  if (power.type === 'peek_spy_swap' && power.step === 'spy_opponent') return attrs;
   return '';
 }
 
@@ -533,33 +729,22 @@ function renderTableCenter() {
   const isMyTurn = gameState.myIndex === gameState.currentPlayerIndex;
   const canDraw = isMyTurn && gameState.turnPhase === 'start' && gameState.state === 'playing';
 
-  if (canDraw) {
-    deckEl.classList.add('clickable', 'card-highlight');
-    deckEl.onclick = () => sendAction('draw-deck');
-  } else {
-    deckEl.classList.remove('clickable', 'card-highlight');
-    deckEl.onclick = null;
-  }
+  deckEl.classList.toggle('clickable', canDraw);
+  deckEl.classList.toggle('card-highlight', canDraw);
+  deckEl.onclick = canDraw ? () => sendAction('draw-deck') : null;
 
   const discardEl = $('discard');
   if (gameState.discardTop) {
     const card = gameState.discardTop;
-    discardEl.className = `card card-face ${powerClass(card.value)}`;
     const lbl = powerLabel(card.value);
-    discardEl.innerHTML = `
-      <span class="card-num">${card.value}</span>
-      ${lbl ? `<span class="card-power-label">${lbl}</span>` : ''}
-    `;
-    if (canDraw) {
-      discardEl.classList.add('clickable', 'card-highlight');
-      discardEl.onclick = () => sendAction('draw-discard');
-    } else {
-      discardEl.classList.remove('clickable', 'card-highlight');
-      discardEl.onclick = null;
-    }
+    discardEl.className = `card card-face ${powerClass(card.value)}`;
+    discardEl.innerHTML = `<span class="card-num">${card.value}</span>${lbl ? `<span class="card-power-label">${lbl}</span>` : ''}`;
+    discardEl.classList.toggle('clickable', canDraw);
+    discardEl.classList.toggle('card-highlight', canDraw);
+    discardEl.onclick = canDraw ? () => sendAction('draw-discard') : null;
   } else {
     discardEl.className = 'card empty-pile';
-    discardEl.innerHTML = '<span class="empty-label">Leer</span>';
+    discardEl.innerHTML = `<span class="empty-label">${t('emptyPile')}</span>`;
     discardEl.onclick = null;
   }
 }
@@ -569,15 +754,11 @@ function renderDrawnCard() {
   if (gameState.drawnCard && (gameState.turnPhase === 'drawn' || gameState.turnPhase === 'discard_swap')) {
     area.style.display = 'flex';
     const card = gameState.drawnCard;
-    const el = $('drawn-card');
     const lbl = powerLabel(card.value);
+    const el = $('drawn-card');
     el.className = `card card-face ${powerClass(card.value)}`;
-    el.innerHTML = `
-      <span class="card-num">${card.value}</span>
-      ${lbl ? `<span class="card-power-label">${lbl}</span>` : ''}
-    `;
-    $('drawn-label').textContent = gameState.turnPhase === 'discard_swap'
-      ? 'Von Ablage:' : 'Gezogen:';
+    el.innerHTML = `<span class="card-num">${card.value}</span>${lbl ? `<span class="card-power-label">${lbl}</span>` : ''}`;
+    $('drawn-label').textContent = gameState.turnPhase === 'discard_swap' ? t('fromDiscard') : t('drawn');
   } else {
     area.style.display = 'none';
   }
@@ -617,9 +798,8 @@ function renderMyCards() {
 function renderActiveSeat() {
   const myArea = $('my-area');
   if (!myArea) return;
-  const isMyTurn = gameState.myIndex === gameState.currentPlayerIndex && gameState.state === 'playing';
-  if (isMyTurn) myArea.classList.add('active-turn');
-  else myArea.classList.remove('active-turn');
+  myArea.classList.toggle('active-turn',
+    gameState.myIndex === gameState.currentPlayerIndex && gameState.state === 'playing');
 }
 
 function getMyCardClickable(cardIndex) {
@@ -630,7 +810,6 @@ function getMyCardClickable(cardIndex) {
     const me = gameState.players.find(p => p.isMe);
     return gameState.peeksLeft > 0 && !me.cards[cardIndex].faceUp;
   }
-
   if (!isMyTurn) return false;
   if (slamMode) return true;
   if (gameState.turnPhase === 'drawn' || gameState.turnPhase === 'discard_swap') return true;
@@ -651,50 +830,25 @@ function isMyCardSelected(cardIndex) {
 function onMyCardClick(cardIndex) {
   if (!gameState) return;
 
-  if (gameState.state === 'peeking') {
-    sendAction('peek-card', { cardIndex });
-    return;
-  }
+  if (gameState.state === 'peeking') { sendAction('peek-card', { cardIndex }); return; }
   if (slamMode) {
     const idx = slamSelection.indexOf(cardIndex);
     if (idx >= 0) slamSelection.splice(idx, 1);
     else slamSelection.push(cardIndex);
-    renderMyCards();
-    renderStatus();
+    renderMyCards(); renderStatus();
     return;
   }
-  if (gameState.turnPhase === 'drawn' || gameState.turnPhase === 'discard_swap') {
-    sendAction('swap-card', { cardIndex });
-    return;
-  }
-  if (gameState.powerState && gameState.powerState.type === 'peek') {
-    sendAction('use-power', { targetPlayerIndex: gameState.myIndex, targetCardIndex: cardIndex });
-    return;
-  }
-  if (gameState.powerState && gameState.powerState.type === 'swap' && gameState.powerState.step === 'select_own') {
-    sendAction('use-power', { targetPlayerIndex: gameState.myIndex, targetCardIndex: cardIndex });
-    return;
-  }
-  if (gameState.powerState && gameState.powerState.type === 'peek_spy_swap' && gameState.powerState.step === 'peek_own') {
-    sendAction('use-power', { targetPlayerIndex: gameState.myIndex, targetCardIndex: cardIndex });
-    return;
-  }
+  if (gameState.turnPhase === 'drawn' || gameState.turnPhase === 'discard_swap') { sendAction('swap-card', { cardIndex }); return; }
+  if (gameState.powerState && gameState.powerState.type === 'peek') { sendAction('use-power', { targetPlayerIndex: gameState.myIndex, targetCardIndex: cardIndex }); return; }
+  if (gameState.powerState && gameState.powerState.type === 'swap' && gameState.powerState.step === 'select_own') { sendAction('use-power', { targetPlayerIndex: gameState.myIndex, targetCardIndex: cardIndex }); return; }
+  if (gameState.powerState && gameState.powerState.type === 'peek_spy_swap' && gameState.powerState.step === 'peek_own') { sendAction('use-power', { targetPlayerIndex: gameState.myIndex, targetCardIndex: cardIndex }); return; }
 }
 
 function onOpponentCardClick(playerIndex, cardIndex) {
   if (!gameState || !gameState.powerState) return;
-
-  if (gameState.powerState.type === 'spy') {
+  const power = gameState.powerState;
+  if (power.type === 'spy' || (power.type === 'swap' && power.step === 'select_opponent') || (power.type === 'peek_spy_swap' && power.step === 'spy_opponent')) {
     sendAction('use-power', { targetPlayerIndex: playerIndex, targetCardIndex: cardIndex });
-    return;
-  }
-  if (gameState.powerState.type === 'swap' && gameState.powerState.step === 'select_opponent') {
-    sendAction('use-power', { targetPlayerIndex: playerIndex, targetCardIndex: cardIndex });
-    return;
-  }
-  if (gameState.powerState.type === 'peek_spy_swap' && gameState.powerState.step === 'spy_opponent') {
-    sendAction('use-power', { targetPlayerIndex: playerIndex, targetCardIndex: cardIndex });
-    return;
   }
 }
 
@@ -703,177 +857,161 @@ function renderStatus() {
   const btns = $('action-buttons');
   const isMyTurn = gameState.myIndex === gameState.currentPlayerIndex;
   const currentPlayer = gameState.players[gameState.currentPlayerIndex];
-
   btns.innerHTML = '';
 
   if (gameState.state === 'peeking') {
-    msg.textContent = gameState.peeksLeft > 0
-      ? `Sieh dir ${gameState.peeksLeft} deiner Karten an`
-      : 'Warte auf andere Spieler\u2026';
+    msg.textContent = gameState.peeksLeft > 0 ? t('peekN', gameState.peeksLeft) : t('waitOthers');
     return;
   }
-
   if (gameState.state === 'reveal') { msg.textContent = ''; return; }
 
   if (!isMyTurn) {
-    const caboNote = gameState.caboCallerIndex !== null ? ' (letzte Runde!)' : '';
-    msg.textContent = `${currentPlayer.name} ist am Zug${caboNote}`;
+    msg.textContent = t('turnOf', currentPlayer.name) + (gameState.caboCallerIndex !== null ? t('lastRound') : '');
     return;
   }
 
   if (gameState.turnPhase === 'start') {
     if (slamMode) {
-      msg.textContent = `W\u00e4hle Karten zum Ablegen (${slamSelection.length} gew\u00e4hlt)`;
+      msg.textContent = t('selectSlam', slamSelection.length);
       btns.innerHTML = `
-        <button class="btn btn-primary btn-small" id="btn-slam-confirm" ${slamSelection.length === 0 ? 'disabled' : ''}>Ablegen!</button>
-        <button class="btn btn-secondary btn-small" id="btn-slam-cancel">Abbrechen</button>
+        <button class="btn btn-primary btn-small" id="btn-slam-confirm" ${slamSelection.length === 0 ? 'disabled' : ''}>${t('doSlam')}</button>
+        <button class="btn btn-secondary btn-small" id="btn-slam-cancel">${t('cancelSlam')}</button>
       `;
       $('btn-slam-confirm').addEventListener('click', () => {
-        if (slamSelection.length > 0) {
-          sendAction('slam-cards', { cardIndices: [...slamSelection] });
-          slamMode = false;
-          slamSelection = [];
-        }
+        if (slamSelection.length > 0) { sendAction('slam-cards', { cardIndices: [...slamSelection] }); slamMode = false; slamSelection = []; }
       });
-      $('btn-slam-cancel').addEventListener('click', () => {
-        slamMode = false;
-        slamSelection = [];
-        renderMyCards();
-        renderStatus();
-      });
+      $('btn-slam-cancel').addEventListener('click', () => { slamMode = false; slamSelection = []; renderMyCards(); renderStatus(); });
       return;
     }
 
-    const caboNote = gameState.caboCallerIndex !== null ? ' \u2014 Letzte Runde!' : '';
-    msg.textContent = `Du bist dran${caboNote}`;
+    msg.textContent = t('yourTurn') + (gameState.caboCallerIndex !== null ? t('lastRoundBang') : '');
     if (gameState.discardTop) {
-      btns.innerHTML += '<button class="btn btn-secondary btn-small" id="btn-slam">Slammen</button>';
-      $('btn-slam').addEventListener('click', () => {
-        slamMode = true;
-        slamSelection = [];
-        renderMyCards();
-        renderStatus();
-      });
+      btns.innerHTML += `<button class="btn btn-secondary btn-small" id="btn-slam">${t('slam')}</button>`;
+      $('btn-slam').addEventListener('click', () => { slamMode = true; slamSelection = []; renderMyCards(); renderStatus(); });
     }
     if (gameState.caboCallerIndex === null) {
-      btns.innerHTML += '<button class="btn btn-danger btn-small" id="btn-cabo">CABO!</button>';
+      btns.innerHTML += `<button class="btn btn-danger btn-small" id="btn-cabo">CABO!</button>`;
       $('btn-cabo').addEventListener('click', () => sendAction('call-cabo'));
     }
-    // Draw buttons
-    btns.innerHTML += '<button class="btn btn-primary btn-small" id="btn-draw-deck">Stapel ziehen</button>';
+    btns.innerHTML += `<button class="btn btn-primary btn-small" id="btn-draw-deck">${t('drawDeck')}</button>`;
     $('btn-draw-deck').addEventListener('click', () => sendAction('draw-deck'));
     if (gameState.discardTop) {
-      btns.innerHTML += '<button class="btn btn-secondary btn-small" id="btn-draw-discard">Ablage nehmen</button>';
+      btns.innerHTML += `<button class="btn btn-secondary btn-small" id="btn-draw-discard">${t('drawDiscard')}</button>`;
       $('btn-draw-discard').addEventListener('click', () => sendAction('draw-discard'));
     }
 
   } else if (gameState.turnPhase === 'drawn') {
-    msg.textContent = 'Tauschen oder ablegen?';
-    btns.innerHTML = '<button class="btn btn-secondary btn-small" id="btn-discard">Ablegen</button>';
+    msg.textContent = t('swapOrDiscard');
+    btns.innerHTML = `<button class="btn btn-secondary btn-small" id="btn-discard">${t('discardCard')}</button>`;
     $('btn-discard').addEventListener('click', () => sendAction('discard-drawn'));
-    // Tap a card in my hand to swap
 
   } else if (gameState.turnPhase === 'discard_swap') {
-    msg.textContent = 'Welche Karte ersetzen?';
+    msg.textContent = t('whichCard');
 
   } else if (gameState.turnPhase === 'power') {
     const power = gameState.powerState;
-    if (power.type === 'peek') {
-      msg.textContent = 'PEEK \u2014 Tippe auf eine deiner Karten';
-    } else if (power.type === 'spy') {
-      msg.textContent = 'SPY \u2014 Tippe auf eine Karte eines Mitspielers';
-    } else if (power.type === 'swap') {
-      msg.textContent = power.step === 'select_own'
-        ? 'SWAP \u2014 Tippe auf eine deiner Karten'
-        : 'SWAP \u2014 Tippe auf eine Karte eines Mitspielers';
-    } else if (power.type === 'peek_spy_swap') {
-      if (power.step === 'peek_own') {
-        msg.textContent = 'KING \u2014 Sieh dir eine eigene Karte an';
-      } else if (power.step === 'spy_opponent') {
-        msg.textContent = 'KING \u2014 Sieh dir eine Karte eines Mitspielers an';
-      } else if (power.step === 'decide_swap') {
-        msg.textContent = 'KING \u2014 Karten tauschen?';
+    if (power.type === 'peek') msg.textContent = t('peekMsg');
+    else if (power.type === 'spy') msg.textContent = t('spyMsg');
+    else if (power.type === 'swap') msg.textContent = power.step === 'select_own' ? t('swapOwnMsg') : t('swapOppMsg');
+    else if (power.type === 'peek_spy_swap') {
+      if (power.step === 'peek_own') msg.textContent = t('kingPeekMsg');
+      else if (power.step === 'spy_opponent') msg.textContent = t('kingSpyMsg');
+      else if (power.step === 'decide_swap') {
+        msg.textContent = t('kingSwapMsg');
         btns.innerHTML = `
-          <button class="btn btn-primary btn-small" id="btn-do-swap">Tauschen</button>
-          <button class="btn btn-secondary btn-small" id="btn-skip-swap">Behalten</button>
+          <button class="btn btn-primary btn-small" id="btn-do-swap">${t('doSwap')}</button>
+          <button class="btn btn-secondary btn-small" id="btn-skip-swap">${t('keepCard')}</button>
         `;
         $('btn-do-swap').addEventListener('click', () => sendAction('confirm-peek-spy-swap'));
         $('btn-skip-swap').addEventListener('click', () => sendAction('skip-power'));
         return;
       }
     }
-    btns.innerHTML = '<button class="btn btn-secondary btn-small" id="btn-skip-power">Verzichten</button>';
+    btns.innerHTML = `<button class="btn btn-secondary btn-small" id="btn-skip-power">${t('skipPower')}</button>`;
     $('btn-skip-power').addEventListener('click', () => sendAction('skip-power'));
   }
 }
 
+// ===== Reveal + Game Over =====
 function renderReveal() {
   const overlay = $('reveal-overlay');
   if (gameState.state !== 'reveal') { overlay.style.display = 'none'; return; }
-
   overlay.style.display = 'flex';
-  const roundScores = gameState.roundScores || [];
-  const actualLowest = Math.min(...roundScores);
 
-  $('reveal-results').innerHTML = gameState.players.map((p, i) => {
-    const isWinner = roundScores[i] === actualLowest;
+  const roundScores = gameState.roundScores || [];
+  const isGameOver = gameState.gameOver;
+  const actualLowest = Math.min(...gameState.players.map(p => p.score));
+
+  // Title
+  $('reveal-title').textContent = isGameOver ? t('gameOverTitle') : t('roundOver');
+
+  // Winner banner for game over
+  let bannerHtml = '';
+  if (isGameOver) {
+    const winner = gameState.players.reduce((best, p) => p.score < best.score ? p : best);
+    bannerHtml = `<div class="reveal-winner-banner">${t('gameWinner', winner.name)}</div>`;
+  }
+
+  // Per-player cards
+  const playersHtml = gameState.players.map((p, i) => {
     const isCaller = i === gameState.caboCallerIndex;
-    const rawScore = p.cards.reduce((sum, c) => sum + (c.value || 0), 0);
-    const penalty = isCaller && roundScores[i] > rawScore ? 10 : 0;
-    const nameClass = isWinner ? 'winner' : (isCaller ? 'cabo-caller' : '');
+    const roundScore = roundScores[i] ?? 0;
+    const rawHandScore = p.cards.reduce((sum, c) => sum + (c.value || 0), 0);
+    const penalty = isCaller && roundScore > rawHandScore ? 10 : 0;
+    const isOverall = p.score === actualLowest;
+    const nameClass = isOverall ? 'winner' : (isCaller ? 'cabo-caller' : '');
     const cards = p.cards.map(c => buildCardFace(c, 'card-small')).join('');
-    const penaltyHtml = penalty > 0 ? '<div class="reveal-penalty">+10 Strafe (Cabo verfehlt)</div>' : '';
+    const penaltyHtml = penalty > 0 ? `<div class="reveal-penalty">${t('penalty')}</div>` : '';
 
     return `<div class="reveal-player">
       <div class="reveal-player-header">
-        <span class="reveal-player-name ${nameClass}">${p.name} ${isWinner ? '\u{1F3C6}' : ''} ${isCaller ? '(Cabo)' : ''}</span>
-        <span class="reveal-player-score">${roundScores[i]}</span>
+        <span class="reveal-player-name ${nameClass}">${p.name}${isOverall && isGameOver ? ' \u{1F3C6}' : ''} ${isCaller ? '(Cabo)' : ''}</span>
+        <span class="reveal-player-score">${t('roundPoints', roundScore)}</span>
       </div>
       <div class="reveal-cards">${cards}</div>
       ${penaltyHtml}
-      <div class="reveal-total-score">Gesamt: ${p.score}</div>
+      <div class="reveal-total-score${p.score >= 100 ? ' over-100' : ''}">${t('totalPoints', p.score)}</div>
     </div>`;
   }).join('');
 
+  $('reveal-results').innerHTML = bannerHtml + playersHtml;
+
   const revealBtns = $('reveal-buttons');
   if (isHost) {
-    revealBtns.innerHTML = `
-      <button class="btn btn-primary btn-small" id="btn-next-round">N\u00e4chste Runde</button>
-      <button class="btn btn-secondary btn-small" id="btn-back-lobby">Zur\u00fcck zur Lobby</button>
-    `;
-    $('btn-next-round').addEventListener('click', () => sendAction('play-again'));
-    $('btn-back-lobby').addEventListener('click', () => sendAction('back-to-lobby'));
+    if (isGameOver) {
+      revealBtns.innerHTML = `<button class="btn btn-primary btn-small" id="btn-back-lobby">${t('backLobby')}</button>`;
+      $('btn-back-lobby').addEventListener('click', () => sendAction('back-to-lobby'));
+    } else {
+      revealBtns.innerHTML = `
+        <button class="btn btn-primary btn-small" id="btn-next-round">${t('nextRound')}</button>
+        <button class="btn btn-secondary btn-small" id="btn-back-lobby">${t('backLobby')}</button>
+      `;
+      $('btn-next-round').addEventListener('click', () => sendAction('play-again'));
+      $('btn-back-lobby').addEventListener('click', () => sendAction('back-to-lobby'));
+    }
   } else {
-    revealBtns.innerHTML = '<p style="color:var(--text-dim);font-size:0.85rem">Warte auf den Gastgeber\u2026</p>';
+    revealBtns.innerHTML = `<p style="color:var(--text-dim);font-size:0.85rem">${t('waitHost')}</p>`;
   }
 }
 
 // ===== Bot AI =====
 function initBotMemory() {
   botMemory = {};
-  for (const botId of botIds) {
-    botMemory[botId] = { ownCards: {}, opponentCards: {} };
-  }
+  for (const botId of botIds) botMemory[botId] = { ownCards: {}, opponentCards: {} };
 }
 
 function scheduleBotTurn() {
   if (!isHost || !game) return;
-
   if (game.state === 'peeking') {
     for (const botId of botIds) {
       const done = game.peeksDone[botId] || 0;
-      if (done < 2) {
-        setTimeout(() => botPeek(botId), BOT_DELAY * (done + 1));
-      }
+      if (done < 2) setTimeout(() => botPeek(botId), BOT_DELAY * (done + 1));
     }
     return;
   }
-
   if (game.state === 'playing') {
-    const currentPlayer = game.players[game.currentPlayerIndex];
-    if (currentPlayer && botIds.includes(currentPlayer.id)) {
-      setTimeout(() => botPlayTurn(currentPlayer.id), BOT_DELAY);
-    }
+    const cur = game.players[game.currentPlayerIndex];
+    if (cur && botIds.includes(cur.id)) setTimeout(() => botPlayTurn(cur.id), BOT_DELAY);
   }
 }
 
@@ -881,15 +1019,12 @@ function botPeek(botId) {
   if (!game || game.state !== 'peeking') return;
   const player = game.players.find(p => p.id === botId);
   if (!player) return;
-
   for (let i = 0; i < 4; i++) {
     if (!player.knownCards.has(i)) {
       const result = game.peekCard(botId, i);
       if (result) {
         if (botMemory[botId]) botMemory[botId].ownCards[i] = { ...player.cards[i] };
-        broadcastGameState();
-        scheduleBotTurn();
-        return;
+        broadcastGameState(); scheduleBotTurn(); return;
       }
     }
   }
@@ -902,41 +1037,28 @@ function botPlayTurn(botId) {
 
   const player = game.players[playerIndex];
   const mem = botMemory[botId] || { ownCards: {}, opponentCards: {} };
-
-  for (const idx of player.knownCards) {
-    mem.ownCards[idx] = { ...player.cards[idx] };
-  }
+  for (const idx of player.knownCards) mem.ownCards[idx] = { ...player.cards[idx] };
 
   if (game.turnPhase === 'start') {
-    // Consider calling Cabo
-    let knownTotal = 0;
-    let unknownCount = 0;
+    let knownTotal = 0, unknownCount = 0;
     for (let i = 0; i < player.cards.length; i++) {
       if (mem.ownCards[i]) knownTotal += cardValue(mem.ownCards[i]);
       else unknownCount++;
     }
-
     if (unknownCount === 0 && knownTotal <= 6 && game.caboCallerIndex === null) {
-      handleActionOnHost(botId, 'call-cabo', {});
-      return;
+      handleActionOnHost(botId, 'call-cabo', {}); return;
     }
-
     handleActionOnHost(botId, 'draw-deck', {});
     setTimeout(() => botDecideDrawn(botId), BOT_DELAY);
     return;
   }
-
-  if (game.turnPhase === 'power') {
-    setTimeout(() => botUsePower(botId), BOT_DELAY);
-    return;
-  }
+  if (game.turnPhase === 'power') setTimeout(() => botUsePower(botId), BOT_DELAY);
 }
 
 function botDecideDrawn(botId) {
   if (!game || game.state !== 'playing') return;
   const playerIndex = game.getPlayerIndex(botId);
-  if (playerIndex !== game.currentPlayerIndex) return;
-  if (game.turnPhase !== 'drawn') return;
+  if (playerIndex !== game.currentPlayerIndex || game.turnPhase !== 'drawn') return;
 
   const player = game.players[playerIndex];
   const mem = botMemory[botId] || { ownCards: {}, opponentCards: {} };
@@ -944,35 +1066,20 @@ function botDecideDrawn(botId) {
 
   let worstIdx = -1, worstVal = -1;
   for (let i = 0; i < player.cards.length; i++) {
-    if (mem.ownCards[i]) {
-      const v = cardValue(mem.ownCards[i]);
-      if (v > worstVal) { worstVal = v; worstIdx = i; }
-    }
+    if (mem.ownCards[i]) { const v = cardValue(mem.ownCards[i]); if (v > worstVal) { worstVal = v; worstIdx = i; } }
   }
-
   let unknownIdx = -1;
-  for (let i = 0; i < player.cards.length; i++) {
-    if (!mem.ownCards[i]) { unknownIdx = i; break; }
-  }
+  for (let i = 0; i < player.cards.length; i++) { if (!mem.ownCards[i]) { unknownIdx = i; break; } }
 
-  if (worstIdx >= 0 && drawnValue < worstVal) {
-    mem.ownCards[worstIdx] = { ...game.drawnCard };
-    handleActionOnHost(botId, 'swap-card', { cardIndex: worstIdx });
-    return;
-  }
-  if (unknownIdx >= 0 && drawnValue <= 4) {
-    mem.ownCards[unknownIdx] = { ...game.drawnCard };
-    handleActionOnHost(botId, 'swap-card', { cardIndex: unknownIdx });
-    return;
-  }
+  if (worstIdx >= 0 && drawnValue < worstVal) { mem.ownCards[worstIdx] = { ...game.drawnCard }; handleActionOnHost(botId, 'swap-card', { cardIndex: worstIdx }); return; }
+  if (unknownIdx >= 0 && drawnValue <= 4) { mem.ownCards[unknownIdx] = { ...game.drawnCard }; handleActionOnHost(botId, 'swap-card', { cardIndex: unknownIdx }); return; }
   handleActionOnHost(botId, 'discard-drawn', {});
 }
 
 function botUsePower(botId) {
   if (!game || game.state !== 'playing') return;
   const playerIndex = game.getPlayerIndex(botId);
-  if (playerIndex !== game.currentPlayerIndex) return;
-  if (game.turnPhase !== 'power' || !game.powerState) return;
+  if (playerIndex !== game.currentPlayerIndex || game.turnPhase !== 'power' || !game.powerState) return;
 
   const player = game.players[playerIndex];
   const mem = botMemory[botId] || { ownCards: {}, opponentCards: {} };
@@ -980,23 +1087,18 @@ function botUsePower(botId) {
 
   if (power.type === 'peek') {
     for (let i = 0; i < player.cards.length; i++) {
-      if (!mem.ownCards[i]) {
-        handleActionOnHost(botId, 'use-power', { targetPlayerIndex: playerIndex, targetCardIndex: i });
-        mem.ownCards[i] = { ...player.cards[i] };
-        return;
-      }
+      if (!mem.ownCards[i]) { handleActionOnHost(botId, 'use-power', { targetPlayerIndex: playerIndex, targetCardIndex: i }); mem.ownCards[i] = { ...player.cards[i] }; return; }
     }
     handleActionOnHost(botId, 'skip-power', {});
 
   } else if (power.type === 'spy') {
-    const opponents = game.players.filter((p, i) => i !== playerIndex);
+    const opponents = game.players.filter((_, i) => i !== playerIndex);
     if (opponents.length > 0) {
       const opp = opponents[Math.floor(Math.random() * opponents.length)];
       const oppIdx = game.getPlayerIndex(opp.id);
       const cardIdx = Math.floor(Math.random() * opp.cards.length);
       mem.opponentCards[`${oppIdx}_${cardIdx}`] = { ...opp.cards[cardIdx] };
-      handleActionOnHost(botId, 'use-power', { targetPlayerIndex: oppIdx, targetCardIndex: cardIdx });
-      return;
+      handleActionOnHost(botId, 'use-power', { targetPlayerIndex: oppIdx, targetCardIndex: cardIdx }); return;
     }
     handleActionOnHost(botId, 'skip-power', {});
 
@@ -1004,23 +1106,19 @@ function botUsePower(botId) {
     if (power.step === 'select_own') {
       let worstIdx = 0, worstVal = -2;
       for (let i = 0; i < player.cards.length; i++) {
-        if (mem.ownCards[i]) {
-          const v = cardValue(mem.ownCards[i]);
-          if (v > worstVal) { worstVal = v; worstIdx = i; }
-        }
+        if (mem.ownCards[i]) { const v = cardValue(mem.ownCards[i]); if (v > worstVal) { worstVal = v; worstIdx = i; } }
       }
       if (worstVal <= 3) { handleActionOnHost(botId, 'skip-power', {}); return; }
       handleActionOnHost(botId, 'use-power', { targetPlayerIndex: playerIndex, targetCardIndex: worstIdx });
       setTimeout(() => botUsePower(botId), BOT_DELAY);
     } else if (power.step === 'select_opponent') {
-      const opponents = game.players.filter((p, i) => i !== playerIndex);
+      const opponents = game.players.filter((_, i) => i !== playerIndex);
       if (opponents.length > 0) {
         const opp = opponents[Math.floor(Math.random() * opponents.length)];
         const oppIdx = game.getPlayerIndex(opp.id);
         const cardIdx = Math.floor(Math.random() * opp.cards.length);
         delete mem.ownCards[power.selectedCard];
-        handleActionOnHost(botId, 'use-power', { targetPlayerIndex: oppIdx, targetCardIndex: cardIdx });
-        return;
+        handleActionOnHost(botId, 'use-power', { targetPlayerIndex: oppIdx, targetCardIndex: cardIdx }); return;
       }
       handleActionOnHost(botId, 'skip-power', {});
     }
@@ -1028,14 +1126,12 @@ function botUsePower(botId) {
   } else if (power.type === 'peek_spy_swap') {
     if (power.step === 'peek_own') {
       let targetIdx = 0;
-      for (let i = 0; i < player.cards.length; i++) {
-        if (!mem.ownCards[i]) { targetIdx = i; break; }
-      }
+      for (let i = 0; i < player.cards.length; i++) { if (!mem.ownCards[i]) { targetIdx = i; break; } }
       mem.ownCards[targetIdx] = { ...player.cards[targetIdx] };
       handleActionOnHost(botId, 'use-power', { targetPlayerIndex: playerIndex, targetCardIndex: targetIdx });
       setTimeout(() => botUsePower(botId), BOT_DELAY);
     } else if (power.step === 'spy_opponent') {
-      const opponents = game.players.filter((p, i) => i !== playerIndex);
+      const opponents = game.players.filter((_, i) => i !== playerIndex);
       if (opponents.length > 0) {
         const opp = opponents[Math.floor(Math.random() * opponents.length)];
         const oppIdx = game.getPlayerIndex(opp.id);
@@ -1043,25 +1139,22 @@ function botUsePower(botId) {
         mem.opponentCards[`${oppIdx}_${cardIdx}`] = { ...opp.cards[cardIdx] };
         handleActionOnHost(botId, 'use-power', { targetPlayerIndex: oppIdx, targetCardIndex: cardIdx });
         setTimeout(() => botUsePower(botId), BOT_DELAY);
-      } else {
-        handleActionOnHost(botId, 'skip-power', {});
-      }
+      } else { handleActionOnHost(botId, 'skip-power', {}); }
     } else if (power.step === 'decide_swap') {
       const ownVal = cardValue(player.cards[power.ownCardIndex]);
       const oppVal = cardValue(game.players[power.oppPlayerIndex].cards[power.oppCardIndex]);
-      if (ownVal > oppVal) {
-        delete mem.ownCards[power.ownCardIndex];
-        handleActionOnHost(botId, 'confirm-peek-spy-swap', {});
-      } else {
-        handleActionOnHost(botId, 'skip-power', {});
-      }
+      if (ownVal > oppVal) { delete mem.ownCards[power.ownCardIndex]; handleActionOnHost(botId, 'confirm-peek-spy-swap', {}); }
+      else { handleActionOnHost(botId, 'skip-power', {}); }
     }
   }
 }
 
-// Hook into broadcastGameState to trigger bot turns
+// Hook broadcastGameState to trigger bot turns
 const _origBroadcastGameState = broadcastGameState;
 broadcastGameState = function() {
   _origBroadcastGameState();
   if (isHost && game) setTimeout(() => scheduleBotTurn(), 100);
 };
+
+// ===== Init =====
+applyLanguage();
