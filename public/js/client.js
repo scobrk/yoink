@@ -4,23 +4,22 @@
 // Other players connect to the host and send actions / receive state.
 
 const PEER_PREFIX = 'cabo-an-der-riss-';
-const SUIT_SYMBOLS = { hearts: '\u2665', diamonds: '\u2666', clubs: '\u2663', spades: '\u2660' };
 
-let peer = null;          // PeerJS Peer instance
-let isHost = false;       // Whether this browser is the host
-let game = null;          // CaboGame instance (host only)
-let hostConn = null;      // DataConnection to host (non-host only)
-let guestConns = {};      // { peerId: DataConnection } (host only)
-let playerPeerMap = {};   // { peerId: gamePlayerId } (host only)
-let myPlayerId = null;    // Our unique player ID in the game
+let peer = null;
+let isHost = false;
+let game = null;
+let hostConn = null;
+let guestConns = {};
+let playerPeerMap = {};
+let myPlayerId = null;
 let myName = '';
 let roomCode = '';
 let gameState = null;
 let peekTimeout = null;
-let botIds = [];          // IDs of bot players (host only)
-let botMemory = {};       // { botId: { ownCards: {idx: card}, opponentCards: {playerIdx_cardIdx: card} } }
-let slamMode = false;     // Whether player is selecting cards to slam
-let slamSelection = [];   // Indices of cards selected for slamming
+let botIds = [];
+let botMemory = {};
+let slamMode = false;
+let slamSelection = [];
 const BOT_NAMES = ['Biber', 'Storch', 'Sch\u00fctze', 'Riss'];
 const BOT_DELAY = 1200;
 
@@ -55,24 +54,31 @@ function showToast(msg) {
 }
 
 // ===== Card HTML Builders =====
-function suitColor(suit) {
-  if (suit === 'red') return 'suit-red';
-  if (suit === 'black') return 'suit-black';
-  return (suit === 'hearts' || suit === 'diamonds') ? 'suit-red' : 'suit-black';
+
+function powerClass(value) {
+  if (value === 7 || value === 8)   return 'power-peek';
+  if (value === 9 || value === 10)  return 'power-spy';
+  if (value === 11 || value === 12) return 'power-swap';
+  if (value === 13)                 return 'power-king';
+  return 'power-none';
+}
+
+function powerLabel(value) {
+  if (value === 7 || value === 8)   return 'PEEK';
+  if (value === 9 || value === 10)  return 'SPY';
+  if (value === 11 || value === 12) return 'SWAP';
+  if (value === 13)                 return 'KING';
+  return '';
 }
 
 function buildCardFace(card, extraClass) {
-  const isJoker = card.rank === 'Joker';
-  const sym = isJoker ? '\u2605' : (SUIT_SYMBOLS[card.suit] || '');
-  const displayRank = isJoker ? '\u2605' : card.rank;
-  const valBadge = card.value !== undefined
-    ? `<span class="card-value-badge">${card.value}</span>` : '';
-  return `<div class="card card-face ${suitColor(card.suit)} ${extraClass || ''}">
-    <span class="card-rank">${displayRank}</span>
-    <span class="card-suit-small">${sym}</span>
-    <span class="card-center-suit">${isJoker ? '\u{1F0CF}' : sym}</span>
-    <span class="card-bottom">${displayRank}</span>
-    ${valBadge}
+  const v = card.value;
+  const pClass = powerClass(v);
+  const label = powerLabel(v);
+  const labelHtml = label ? `<span class="card-power-label">${label}</span>` : '';
+  return `<div class="card card-face ${pClass} ${extraClass || ''}">
+    <span class="card-num">${v}</span>
+    ${labelHtml}
   </div>`;
 }
 
@@ -102,61 +108,30 @@ function handleActionOnHost(playerId, action, data) {
   let result = null;
 
   switch (action) {
-    case 'peek-card':
-      result = game.peekCard(playerId, data.cardIndex);
-      break;
-    case 'draw-deck':
-      result = game.drawDeck(playerId);
-      break;
-    case 'draw-discard':
-      result = game.drawDiscard(playerId);
-      break;
-    case 'swap-card':
-      result = game.swapCard(playerId, data.cardIndex);
-      break;
-    case 'discard-drawn':
-      result = game.discardDrawn(playerId);
-      break;
-    case 'use-power':
-      result = game.usePower(playerId, data.targetPlayerIndex, data.targetCardIndex);
-      break;
-    case 'skip-power':
-      result = game.skipPower(playerId);
-      break;
-    case 'slam-cards':
-      result = game.slamCards(playerId, data.cardIndices);
-      break;
-    case 'confirm-peek-spy-swap':
-      result = game.confirmPeekSpySwap(playerId);
-      break;
-    case 'call-cabo':
-      result = game.callCabo(playerId);
-      break;
-    case 'play-again':
-      result = game.playAgain();
-      break;
-    case 'back-to-lobby':
-      result = game.backToLobby();
-      break;
+    case 'peek-card':           result = game.peekCard(playerId, data.cardIndex); break;
+    case 'draw-deck':           result = game.drawDeck(playerId); break;
+    case 'draw-discard':        result = game.drawDiscard(playerId); break;
+    case 'swap-card':           result = game.swapCard(playerId, data.cardIndex); break;
+    case 'discard-drawn':       result = game.discardDrawn(playerId); break;
+    case 'use-power':           result = game.usePower(playerId, data.targetPlayerIndex, data.targetCardIndex); break;
+    case 'skip-power':          result = game.skipPower(playerId); break;
+    case 'slam-cards':          result = game.slamCards(playerId, data.cardIndices); break;
+    case 'confirm-peek-spy-swap': result = game.confirmPeekSpySwap(playerId); break;
+    case 'call-cabo':           result = game.callCabo(playerId); break;
+    case 'play-again':          result = game.playAgain(); break;
+    case 'back-to-lobby':       result = game.backToLobby(); break;
   }
 
   if (!result) return;
 
-  // Send targeted events
   if (result.events) {
     for (const evt of result.events) {
-      if (evt.target === 'all') {
-        broadcastEvent(evt.type, evt.data);
-      } else {
-        sendEventToPlayer(evt.target, evt.type, evt.data);
-      }
+      if (evt.target === 'all') broadcastEvent(evt.type, evt.data);
+      else sendEventToPlayer(evt.target, evt.type, evt.data);
     }
   }
 
-  // Broadcast updated state to all players
-  if (result.broadcast || result.ok) {
-    broadcastGameState();
-  }
+  if (result.broadcast || result.ok) broadcastGameState();
 }
 
 function broadcastGameState() {
@@ -170,40 +145,29 @@ function broadcastGameState() {
       gameState = state;
       renderFromState();
     } else {
-      const peerIdEntry = Object.entries(playerPeerMap).find(([, pid]) => pid === player.id);
-      if (peerIdEntry) {
-        const conn = guestConns[peerIdEntry[0]];
-        if (conn && conn.open) {
-          conn.send({ type: 'game-state', state });
-        }
+      const entry = Object.entries(playerPeerMap).find(([, pid]) => pid === player.id);
+      if (entry) {
+        const conn = guestConns[entry[0]];
+        if (conn && conn.open) conn.send({ type: 'game-state', state });
       }
     }
   }
 }
 
 function broadcastEvent(evtType, data) {
-  // Send to self
   handleEvent(evtType, data);
-  // Send to all guests
   for (const peerId of Object.keys(guestConns)) {
     const conn = guestConns[peerId];
-    if (conn && conn.open) {
-      conn.send({ type: 'event', evtType, data });
-    }
+    if (conn && conn.open) conn.send({ type: 'event', evtType, data });
   }
 }
 
 function sendEventToPlayer(playerId, evtType, data) {
-  if (playerId === myPlayerId) {
-    handleEvent(evtType, data);
-    return;
-  }
-  const peerIdEntry = Object.entries(playerPeerMap).find(([, pid]) => pid === playerId);
-  if (peerIdEntry) {
-    const conn = guestConns[peerIdEntry[0]];
-    if (conn && conn.open) {
-      conn.send({ type: 'event', evtType, data });
-    }
+  if (playerId === myPlayerId) { handleEvent(evtType, data); return; }
+  const entry = Object.entries(playerPeerMap).find(([, pid]) => pid === playerId);
+  if (entry) {
+    const conn = guestConns[entry[0]];
+    if (conn && conn.open) conn.send({ type: 'event', evtType, data });
   }
 }
 
@@ -214,19 +178,14 @@ function onGuestConnected(conn) {
       if (msg.type === 'join') {
         const guestPlayerId = generatePlayerId();
         const result = game.addPlayer(guestPlayerId, msg.name);
-        if (result.error) {
-          conn.send({ type: 'error', message: result.error });
-          return;
-        }
+        if (result.error) { conn.send({ type: 'error', message: result.error }); return; }
         guestConns[conn.peer] = conn;
         playerPeerMap[conn.peer] = guestPlayerId;
         conn.send({ type: 'joined', playerId: guestPlayerId, roomCode });
         broadcastGameState();
       } else if (msg.type === 'action') {
         const playerId = playerPeerMap[conn.peer];
-        if (playerId) {
-          handleActionOnHost(playerId, msg.action, msg.data || {});
-        }
+        if (playerId) handleActionOnHost(playerId, msg.action, msg.data || {});
       }
     });
 
@@ -235,7 +194,6 @@ function onGuestConnected(conn) {
       if (playerId && game) {
         const player = game.players.find(p => p.id === playerId);
         const playerName = player ? player.name : 'A player';
-
         if (game.state !== 'lobby') {
           game.state = 'lobby';
           game.players.forEach(p => { p.score = 0; });
@@ -288,7 +246,7 @@ function showCaboBanner() {
   const banner = $('cabo-banner');
   banner.style.display = 'block';
   banner.style.animation = 'none';
-  banner.offsetHeight;
+  banner.offsetHeight; // reflow
   banner.style.animation = '';
   setTimeout(() => { banner.style.display = 'none'; }, 2200);
 }
@@ -296,12 +254,12 @@ function showCaboBanner() {
 function showPeekOverlay(card, label) {
   const overlay = $('peek-overlay');
   const peekCard = $('peek-card');
-  peekCard.className = `card card-large card-face ${suitColor(card.suit)}`;
+  const v = card.value;
+  peekCard.className = `card card-large card-face ${powerClass(v)}`;
+  const lbl = powerLabel(v);
   peekCard.innerHTML = `
-    <span class="card-rank">${card.rank}</span>
-    <span class="card-suit-small">${SUIT_SYMBOLS[card.suit]}</span>
-    <span class="card-center-suit">${SUIT_SYMBOLS[card.suit]}</span>
-    <span class="card-bottom">${card.rank}</span>
+    <span class="card-num">${v}</span>
+    ${lbl ? `<span class="card-power-label">${lbl}</span>` : ''}
   `;
   $('peek-label').textContent = label;
   overlay.style.display = 'flex';
@@ -349,28 +307,16 @@ $('add-bot-btn').addEventListener('click', () => {
   broadcastGameState();
 });
 
-$('player-name').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') $('create-btn').click();
-});
-$('room-code-input').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') $('join-btn').click();
-});
-$('room-code-input').addEventListener('input', (e) => {
-  e.target.value = e.target.value.toUpperCase();
-});
+$('player-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('create-btn').click(); });
+$('room-code-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('join-btn').click(); });
+$('room-code-input').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase(); });
 
-// Rules
-$('rules-btn').addEventListener('click', () => {
-  $('rules-overlay').style.display = 'flex';
-});
-$('rules-close').addEventListener('click', () => {
-  $('rules-overlay').style.display = 'none';
-});
+$('rules-btn').addEventListener('click', () => { $('rules-overlay').style.display = 'flex'; });
+$('rules-close').addEventListener('click', () => { $('rules-overlay').style.display = 'none'; });
 $('rules-overlay').addEventListener('click', (e) => {
   if (e.target === $('rules-overlay')) $('rules-overlay').style.display = 'none';
 });
 
-// Scores toggle
 $('scores-toggle').addEventListener('click', () => {
   const panel = $('scores-panel');
   panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
@@ -387,12 +333,10 @@ function createRoom() {
 
   peer = new Peer(PEER_PREFIX + roomCode, {
     debug: 0,
-    config: {
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' }
-      ]
-    }
+    config: { iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' }
+    ]}
   });
 
   peer.on('open', () => {
@@ -423,20 +367,16 @@ function joinRoom(code) {
 
   peer = new Peer(undefined, {
     debug: 0,
-    config: {
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' }
-      ]
-    }
+    config: { iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' }
+    ]}
   });
 
   peer.on('open', () => {
     hostConn = peer.connect(PEER_PREFIX + code, { reliable: true });
 
-    hostConn.on('open', () => {
-      hostConn.send({ type: 'join', name: myName });
-    });
+    hostConn.on('open', () => { hostConn.send({ type: 'join', name: myName }); });
 
     hostConn.on('data', (msg) => {
       if (msg.type === 'joined') {
@@ -464,29 +404,19 @@ function joinRoom(code) {
       $('waiting-room').style.display = 'none';
     });
 
-    hostConn.on('error', () => {
-      showToast('Verbindungsfehler');
-    });
+    hostConn.on('error', () => { showToast('Verbindungsfehler'); });
   });
 
   peer.on('error', (err) => {
-    if (err.type === 'peer-unavailable') {
-      showToast('Raum nicht gefunden');
-    } else {
-      console.error('PeerJS error:', err);
-      showToast('Verbindungsfehler');
-    }
+    if (err.type === 'peer-unavailable') showToast('Raum nicht gefunden');
+    else { console.error('PeerJS error:', err); showToast('Verbindungsfehler'); }
   });
 }
 
 // ===== Render from State =====
 function renderFromState() {
   if (!gameState) return;
-  // Reset slam mode when state changes (e.g. turn ended)
-  if (gameState.turnPhase !== 'start') {
-    slamMode = false;
-    slamSelection = [];
-  }
+  if (gameState.turnPhase !== 'start') { slamMode = false; slamSelection = []; }
 
   if (gameState.state === 'lobby') {
     showScreen('lobby-screen');
@@ -535,6 +465,7 @@ function renderGame() {
   renderTableCenter();
   renderDrawnCard();
   renderMyCards();
+  renderActiveSeat();
   renderStatus();
   renderReveal();
 }
@@ -542,12 +473,12 @@ function renderGame() {
 function renderHeader() {
   $('room-info').textContent = `Raum: ${gameState.roomCode}`;
   $('round-info').textContent = `Runde ${gameState.round}`;
-
   $('scores-list').innerHTML = gameState.players.map(p =>
     `<div class="score-row ${p.isMe ? 'me' : ''}"><span>${p.name}</span><span>${p.score}</span></div>`
   ).join('');
 }
 
+// ===== Render Opponents (circular seats) =====
 function renderOpponents() {
   const area = $('opponents-area');
   const opponents = gameState.players.filter(p => !p.isMe);
@@ -557,29 +488,24 @@ function renderOpponents() {
     const isActive = pIndex === gameState.currentPlayerIndex && gameState.state === 'playing';
     const isCabo = pIndex === gameState.caboCallerIndex;
     const caboTag = isCabo ? '<span class="cabo-tag">CABO</span>' : '';
+    const botTag = p.isBot ? ' \u{1F9AB}' : '';
 
     const cards = p.cards.map((card, j) => {
       const extra = getOpponentCardExtra(pIndex, j);
-      if (card.faceUp) {
-        return buildCardFace(card, 'card-small' + extra);
-      }
+      if (card.faceUp) return buildCardFace(card, 'card-small' + extra);
       return buildCardBack('card-small' + extra);
     }).join('');
 
-    const botTag = p.isBot ? ' \u{1F9AB}' : '';
-
-    return `<div class="opponent-row">
-      <div class="opponent-name ${isActive ? 'active-turn' : ''}">${p.name}${botTag} ${caboTag}</div>
-      <div class="opponent-cards">${cards}</div>
+    return `<div class="seat">
+      <div class="seat-cards">${cards}</div>
+      <div class="seat-name ${isActive ? 'active-turn' : ''}">${p.name}${botTag}${caboTag}</div>
     </div>`;
   }).join('');
 
-  // Attach click handlers for clickable opponent cards
+  // Attach click handlers for power-target cards
   area.querySelectorAll('.card[data-player-index]').forEach(el => {
     el.addEventListener('click', () => {
-      const pIdx = parseInt(el.dataset.playerIndex);
-      const cIdx = parseInt(el.dataset.cardIndex);
-      onOpponentCardClick(pIdx, cIdx);
+      onOpponentCardClick(parseInt(el.dataset.playerIndex), parseInt(el.dataset.cardIndex));
     });
   });
 }
@@ -618,12 +544,11 @@ function renderTableCenter() {
   const discardEl = $('discard');
   if (gameState.discardTop) {
     const card = gameState.discardTop;
-    discardEl.className = `card card-face ${suitColor(card.suit)}`;
+    discardEl.className = `card card-face ${powerClass(card.value)}`;
+    const lbl = powerLabel(card.value);
     discardEl.innerHTML = `
-      <span class="card-rank">${card.rank}</span>
-      <span class="card-suit-small">${SUIT_SYMBOLS[card.suit]}</span>
-      <span class="card-center-suit">${SUIT_SYMBOLS[card.suit]}</span>
-      <span class="card-bottom">${card.rank}</span>
+      <span class="card-num">${card.value}</span>
+      ${lbl ? `<span class="card-power-label">${lbl}</span>` : ''}
     `;
     if (canDraw) {
       discardEl.classList.add('clickable', 'card-highlight');
@@ -645,15 +570,14 @@ function renderDrawnCard() {
     area.style.display = 'flex';
     const card = gameState.drawnCard;
     const el = $('drawn-card');
-    el.className = `card card-face ${suitColor(card.suit)}`;
+    const lbl = powerLabel(card.value);
+    el.className = `card card-face ${powerClass(card.value)}`;
     el.innerHTML = `
-      <span class="card-rank">${card.rank}</span>
-      <span class="card-suit-small">${SUIT_SYMBOLS[card.suit]}</span>
-      <span class="card-center-suit">${SUIT_SYMBOLS[card.suit]}</span>
-      <span class="card-bottom">${card.rank}</span>
+      <span class="card-num">${card.value}</span>
+      ${lbl ? `<span class="card-power-label">${lbl}</span>` : ''}
     `;
     $('drawn-label').textContent = gameState.turnPhase === 'discard_swap'
-      ? 'Von Ablage genommen:' : 'Gezogene Karte:';
+      ? 'Von Ablage:' : 'Gezogen:';
   } else {
     area.style.display = 'none';
   }
@@ -674,11 +598,10 @@ function renderMyCards() {
     const clickCls = canClick ? ' clickable' : '';
 
     if (card.faceUp) {
-      return `<div class="card card-face ${suitColor(card.suit)}${highlight}${selected}${clickCls}" data-index="${i}">
-        <span class="card-rank">${card.rank}</span>
-        <span class="card-suit-small">${SUIT_SYMBOLS[card.suit]}</span>
-        <span class="card-center-suit">${SUIT_SYMBOLS[card.suit]}</span>
-        <span class="card-bottom">${card.rank}</span>
+      const lbl = powerLabel(card.value);
+      return `<div class="card card-face ${powerClass(card.value)}${highlight}${selected}${clickCls}" data-index="${i}">
+        <span class="card-num">${card.value}</span>
+        ${lbl ? `<span class="card-power-label">${lbl}</span>` : ''}
       </div>`;
     }
     return `<div class="card card-back${highlight}${selected}${clickCls}" data-index="${i}">
@@ -689,6 +612,14 @@ function renderMyCards() {
   container.querySelectorAll('.clickable').forEach(el => {
     el.addEventListener('click', () => onMyCardClick(parseInt(el.dataset.index)));
   });
+}
+
+function renderActiveSeat() {
+  const myArea = $('my-area');
+  if (!myArea) return;
+  const isMyTurn = gameState.myIndex === gameState.currentPlayerIndex && gameState.state === 'playing';
+  if (isMyTurn) myArea.classList.add('active-turn');
+  else myArea.classList.remove('active-turn');
 }
 
 function getMyCardClickable(cardIndex) {
@@ -778,14 +709,11 @@ function renderStatus() {
   if (gameState.state === 'peeking') {
     msg.textContent = gameState.peeksLeft > 0
       ? `Sieh dir ${gameState.peeksLeft} deiner Karten an`
-      : 'Warte auf andere Spieler...';
+      : 'Warte auf andere Spieler\u2026';
     return;
   }
 
-  if (gameState.state === 'reveal') {
-    msg.textContent = '';
-    return;
-  }
+  if (gameState.state === 'reveal') { msg.textContent = ''; return; }
 
   if (!isMyTurn) {
     const caboNote = gameState.caboCallerIndex !== null ? ' (letzte Runde!)' : '';
@@ -819,7 +747,7 @@ function renderStatus() {
     const caboNote = gameState.caboCallerIndex !== null ? ' \u2014 Letzte Runde!' : '';
     msg.textContent = `Du bist dran${caboNote}`;
     if (gameState.discardTop) {
-      btns.innerHTML += '<button class="btn btn-secondary btn-small" id="btn-slam">Karte ablegen</button>';
+      btns.innerHTML += '<button class="btn btn-secondary btn-small" id="btn-slam">Slammen</button>';
       $('btn-slam').addEventListener('click', () => {
         slamMode = true;
         slamSelection = [];
@@ -831,32 +759,43 @@ function renderStatus() {
       btns.innerHTML += '<button class="btn btn-danger btn-small" id="btn-cabo">CABO!</button>';
       $('btn-cabo').addEventListener('click', () => sendAction('call-cabo'));
     }
+    // Draw buttons
+    btns.innerHTML += '<button class="btn btn-primary btn-small" id="btn-draw-deck">Stapel ziehen</button>';
+    $('btn-draw-deck').addEventListener('click', () => sendAction('draw-deck'));
+    if (gameState.discardTop) {
+      btns.innerHTML += '<button class="btn btn-secondary btn-small" id="btn-draw-discard">Ablage nehmen</button>';
+      $('btn-draw-discard').addEventListener('click', () => sendAction('draw-discard'));
+    }
+
   } else if (gameState.turnPhase === 'drawn') {
-    msg.textContent = 'Tausche mit einer Karte oder lege ab';
+    msg.textContent = 'Tauschen oder ablegen?';
     btns.innerHTML = '<button class="btn btn-secondary btn-small" id="btn-discard">Ablegen</button>';
     $('btn-discard').addEventListener('click', () => sendAction('discard-drawn'));
+    // Tap a card in my hand to swap
+
   } else if (gameState.turnPhase === 'discard_swap') {
-    msg.textContent = 'Welche Karte willst du ersetzen?';
+    msg.textContent = 'Welche Karte ersetzen?';
+
   } else if (gameState.turnPhase === 'power') {
     const power = gameState.powerState;
     if (power.type === 'peek') {
-      msg.textContent = 'BLICK: Tippe auf eine deiner Karten';
+      msg.textContent = 'PEEK \u2014 Tippe auf eine deiner Karten';
     } else if (power.type === 'spy') {
-      msg.textContent = 'SPION: Tippe auf eine Karte eines Mitspielers';
+      msg.textContent = 'SPY \u2014 Tippe auf eine Karte eines Mitspielers';
     } else if (power.type === 'swap') {
       msg.textContent = power.step === 'select_own'
-        ? 'TAUSCH: Tippe auf eine deiner Karten'
-        : 'TAUSCH: Tippe auf eine Karte eines Mitspielers';
+        ? 'SWAP \u2014 Tippe auf eine deiner Karten'
+        : 'SWAP \u2014 Tippe auf eine Karte eines Mitspielers';
     } else if (power.type === 'peek_spy_swap') {
       if (power.step === 'peek_own') {
-        msg.textContent = 'DAME: Sieh dir eine eigene Karte an';
+        msg.textContent = 'KING \u2014 Sieh dir eine eigene Karte an';
       } else if (power.step === 'spy_opponent') {
-        msg.textContent = 'DAME: Sieh dir eine Karte eines Mitspielers an';
+        msg.textContent = 'KING \u2014 Sieh dir eine Karte eines Mitspielers an';
       } else if (power.step === 'decide_swap') {
-        msg.textContent = 'DAME: Karten tauschen?';
+        msg.textContent = 'KING \u2014 Karten tauschen?';
         btns.innerHTML = `
           <button class="btn btn-primary btn-small" id="btn-do-swap">Tauschen</button>
-          <button class="btn btn-secondary btn-small" id="btn-skip-swap">Nicht tauschen</button>
+          <button class="btn btn-secondary btn-small" id="btn-skip-swap">Behalten</button>
         `;
         $('btn-do-swap').addEventListener('click', () => sendAction('confirm-peek-spy-swap'));
         $('btn-skip-swap').addEventListener('click', () => sendAction('skip-power'));
@@ -870,10 +809,7 @@ function renderStatus() {
 
 function renderReveal() {
   const overlay = $('reveal-overlay');
-  if (gameState.state !== 'reveal') {
-    overlay.style.display = 'none';
-    return;
-  }
+  if (gameState.state !== 'reveal') { overlay.style.display = 'none'; return; }
 
   overlay.style.display = 'flex';
   const roundScores = gameState.roundScores || [];
@@ -908,7 +844,7 @@ function renderReveal() {
     $('btn-next-round').addEventListener('click', () => sendAction('play-again'));
     $('btn-back-lobby').addEventListener('click', () => sendAction('back-to-lobby'));
   } else {
-    revealBtns.innerHTML = '<p style="color:var(--text-dim);font-size:0.85rem">Warte auf den Gastgeber...</p>';
+    revealBtns.innerHTML = '<p style="color:var(--text-dim);font-size:0.85rem">Warte auf den Gastgeber\u2026</p>';
   }
 }
 
@@ -923,20 +859,16 @@ function initBotMemory() {
 function scheduleBotTurn() {
   if (!isHost || !game) return;
 
-  // Handle bot peeks
   if (game.state === 'peeking') {
     for (const botId of botIds) {
       const done = game.peeksDone[botId] || 0;
       if (done < 2) {
-        setTimeout(() => {
-          botPeek(botId);
-        }, BOT_DELAY * (done + 1));
+        setTimeout(() => botPeek(botId), BOT_DELAY * (done + 1));
       }
     }
     return;
   }
 
-  // Handle bot turn during play
   if (game.state === 'playing') {
     const currentPlayer = game.players[game.currentPlayerIndex];
     if (currentPlayer && botIds.includes(currentPlayer.id)) {
@@ -954,10 +886,7 @@ function botPeek(botId) {
     if (!player.knownCards.has(i)) {
       const result = game.peekCard(botId, i);
       if (result) {
-        // Remember the card
-        if (botMemory[botId]) {
-          botMemory[botId].ownCards[i] = { ...player.cards[i] };
-        }
+        if (botMemory[botId]) botMemory[botId].ownCards[i] = { ...player.cards[i] };
         broadcastGameState();
         scheduleBotTurn();
         return;
@@ -974,24 +903,17 @@ function botPlayTurn(botId) {
   const player = game.players[playerIndex];
   const mem = botMemory[botId] || { ownCards: {}, opponentCards: {} };
 
-  // Refresh memory of known cards
   for (const idx of player.knownCards) {
     mem.ownCards[idx] = { ...player.cards[idx] };
   }
 
   if (game.turnPhase === 'start') {
     // Consider calling Cabo
-    const knownValues = {};
     let knownTotal = 0;
     let unknownCount = 0;
     for (let i = 0; i < player.cards.length; i++) {
-      if (mem.ownCards[i]) {
-        const v = cardValue(mem.ownCards[i]);
-        knownValues[i] = v;
-        knownTotal += v;
-      } else {
-        unknownCount++;
-      }
+      if (mem.ownCards[i]) knownTotal += cardValue(mem.ownCards[i]);
+      else unknownCount++;
     }
 
     if (unknownCount === 0 && knownTotal <= 6 && game.caboCallerIndex === null) {
@@ -999,7 +921,6 @@ function botPlayTurn(botId) {
       return;
     }
 
-    // Draw from deck
     handleActionOnHost(botId, 'draw-deck', {});
     setTimeout(() => botDecideDrawn(botId), BOT_DELAY);
     return;
@@ -1021,40 +942,29 @@ function botDecideDrawn(botId) {
   const mem = botMemory[botId] || { ownCards: {}, opponentCards: {} };
   const drawnValue = cardValue(game.drawnCard);
 
-  // Find worst known card to potentially swap
-  let worstIdx = -1;
-  let worstVal = -1;
+  let worstIdx = -1, worstVal = -1;
   for (let i = 0; i < player.cards.length; i++) {
     if (mem.ownCards[i]) {
       const v = cardValue(mem.ownCards[i]);
-      if (v > worstVal) {
-        worstVal = v;
-        worstIdx = i;
-      }
+      if (v > worstVal) { worstVal = v; worstIdx = i; }
     }
   }
 
-  // Find any unknown card slot
   let unknownIdx = -1;
   for (let i = 0; i < player.cards.length; i++) {
     if (!mem.ownCards[i]) { unknownIdx = i; break; }
   }
 
-  // Swap if drawn card is better than worst known card
   if (worstIdx >= 0 && drawnValue < worstVal) {
     mem.ownCards[worstIdx] = { ...game.drawnCard };
     handleActionOnHost(botId, 'swap-card', { cardIndex: worstIdx });
     return;
   }
-
-  // Swap with unknown slot if drawn card is decent (<=4)
   if (unknownIdx >= 0 && drawnValue <= 4) {
     mem.ownCards[unknownIdx] = { ...game.drawnCard };
     handleActionOnHost(botId, 'swap-card', { cardIndex: unknownIdx });
     return;
   }
-
-  // Discard the drawn card
   handleActionOnHost(botId, 'discard-drawn', {});
 }
 
@@ -1092,18 +1002,14 @@ function botUsePower(botId) {
 
   } else if (power.type === 'swap') {
     if (power.step === 'select_own') {
-      let worstIdx = 0;
-      let worstVal = -2;
+      let worstIdx = 0, worstVal = -2;
       for (let i = 0; i < player.cards.length; i++) {
         if (mem.ownCards[i]) {
           const v = cardValue(mem.ownCards[i]);
           if (v > worstVal) { worstVal = v; worstIdx = i; }
         }
       }
-      if (worstVal <= 3) {
-        handleActionOnHost(botId, 'skip-power', {});
-        return;
-      }
+      if (worstVal <= 3) { handleActionOnHost(botId, 'skip-power', {}); return; }
       handleActionOnHost(botId, 'use-power', { targetPlayerIndex: playerIndex, targetCardIndex: worstIdx });
       setTimeout(() => botUsePower(botId), BOT_DELAY);
     } else if (power.step === 'select_opponent') {
@@ -1121,7 +1027,6 @@ function botUsePower(botId) {
 
   } else if (power.type === 'peek_spy_swap') {
     if (power.step === 'peek_own') {
-      // Peek at unknown own card, or worst known
       let targetIdx = 0;
       for (let i = 0; i < player.cards.length; i++) {
         if (!mem.ownCards[i]) { targetIdx = i; break; }
@@ -1142,7 +1047,6 @@ function botUsePower(botId) {
         handleActionOnHost(botId, 'skip-power', {});
       }
     } else if (power.step === 'decide_swap') {
-      // Swap if our peeked card is worse than the opponent's
       const ownVal = cardValue(player.cards[power.ownCardIndex]);
       const oppVal = cardValue(game.players[power.oppPlayerIndex].cards[power.oppCardIndex]);
       if (ownVal > oppVal) {
@@ -1159,7 +1063,5 @@ function botUsePower(botId) {
 const _origBroadcastGameState = broadcastGameState;
 broadcastGameState = function() {
   _origBroadcastGameState();
-  if (isHost && game) {
-    setTimeout(() => scheduleBotTurn(), 100);
-  }
+  if (isHost && game) setTimeout(() => scheduleBotTurn(), 100);
 };

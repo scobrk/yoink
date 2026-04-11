@@ -1,24 +1,17 @@
 // Game engine — runs in the host player's browser
 // Manages all game state and validates actions
-
-const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-const SUITS = ['hearts', 'diamonds', 'clubs', 'spades'];
+// Uses the official Cabo deck: 56 cards, values 0–13 (4 of each)
 
 function cardValue(card) {
-  if (card.rank === 'Joker') return 0;
-  if (card.rank === 'K' && (card.suit === 'hearts' || card.suit === 'diamonds')) return -1;
-  if (card.rank === 'K') return 10;
-  if (card.rank === 'A') return 1;
-  if (card.rank === 'J') return 10;
-  if (card.rank === 'Q') return 10;
-  return parseInt(card.rank);
+  return card.value;
 }
 
 function cardPower(card) {
-  if (card.rank === '7' || card.rank === '8') return 'peek';
-  if (card.rank === '9' || card.rank === '10') return 'spy';
-  if (card.rank === 'J') return 'swap';
-  if (card.rank === 'Q') return 'peek_spy_swap';
+  const v = card.value;
+  if (v === 7 || v === 8)  return 'peek';
+  if (v === 9 || v === 10) return 'spy';
+  if (v === 11 || v === 12) return 'swap';
+  if (v === 13)             return 'peek_spy_swap';
   return null;
 }
 
@@ -32,15 +25,12 @@ function shuffle(array) {
 
 function createDeck() {
   const deck = [];
-  for (const suit of SUITS) {
-    for (const rank of RANKS) {
-      deck.push({ rank, suit });
+  for (let v = 0; v <= 13; v++) {
+    for (let s = 0; s < 4; s++) {
+      deck.push({ value: v });
     }
   }
-  // Add 2 Jokers
-  deck.push({ rank: 'Joker', suit: 'red' });
-  deck.push({ rank: 'Joker', suit: 'black' });
-  return deck;
+  return deck; // 56 cards
 }
 
 class CaboGame {
@@ -144,9 +134,9 @@ class CaboGame {
         score: p.score,
         isBot: p.isBot,
         isMe: i === playerIndex,
-        cards: p.cards.map((card, j) => {
+        cards: p.cards.map((card) => {
           if (this.state === 'reveal') {
-            return { ...card, faceUp: true, value: cardValue(card) };
+            return { ...card, faceUp: true };
           }
           return { faceUp: false };
         })
@@ -326,7 +316,6 @@ class CaboGame {
 
     } else if (power.type === 'peek_spy_swap') {
       if (power.step === 'peek_own') {
-        // Step 1: Peek at one of your own cards
         if (targetPlayerIndex !== playerIndex) return null;
         if (targetCardIndex < 0 || targetCardIndex >= player.cards.length) return null;
         player.knownCards.add(targetCardIndex);
@@ -339,7 +328,6 @@ class CaboGame {
         });
 
       } else if (power.step === 'spy_opponent') {
-        // Step 2: Spy on one opponent card
         if (targetPlayerIndex === playerIndex) return null;
         const target = this.players[targetPlayerIndex];
         if (!target) return null;
@@ -358,9 +346,7 @@ class CaboGame {
         });
 
       } else if (power.step === 'decide_swap') {
-        // Step 3: Swap the two peeked cards (targetPlayerIndex=1 means swap, 0 means skip)
-        // This is handled via confirmSwap / skipPower, not usePower
-        return null;
+        return null; // handled via confirmPeekSpySwap / skipPower
       }
     }
 
@@ -406,11 +392,6 @@ class CaboGame {
     return { broadcast: true };
   }
 
-  // ===== Slamming =====
-  // On your turn (start phase), try to drop cards matching the discard top.
-  // cardIndices: array of indices in your hand to slam.
-  // All must have the same value as the discard pile top.
-  // Success: cards removed from hand. Fail: cards stay, draw penalty card.
   slamCards(playerId, cardIndices) {
     if (this.state !== 'playing') return null;
     const playerIndex = this.getPlayerIndex(playerId);
@@ -422,24 +403,19 @@ class CaboGame {
     const player = this.players[playerIndex];
     const discardTopValue = cardValue(this.discardPile[this.discardPile.length - 1]);
 
-    // Validate indices
     const sorted = [...new Set(cardIndices)].sort((a, b) => b - a);
     for (const idx of sorted) {
       if (idx < 0 || idx >= player.cards.length) return null;
     }
 
-    // Check if all selected cards match discard top value
     const allMatch = sorted.every(idx => cardValue(player.cards[idx]) === discardTopValue);
-
     const events = [];
 
     if (allMatch) {
-      // Success: remove cards from hand, add to discard pile
       for (const idx of sorted) {
         const removed = player.cards.splice(idx, 1)[0];
         this.discardPile.push(removed);
       }
-      // Fix knownCards indices after removal
       const newKnown = new Set();
       for (const k of player.knownCards) {
         let adjusted = k;
@@ -457,7 +433,6 @@ class CaboGame {
         data: { playerName: player.name, count: sorted.length }
       });
 
-      // If player has no cards left, they're done (auto-win effectively)
       if (player.cards.length === 0 && this.caboCallerIndex === null) {
         this.caboCallerIndex = playerIndex;
         this.caboPassed = -1;
@@ -470,7 +445,6 @@ class CaboGame {
 
       this._nextTurn();
     } else {
-      // Fail: draw penalty card
       events.push({
         target: 'all',
         type: 'slam-fail',
@@ -479,7 +453,6 @@ class CaboGame {
       if (this.deck.length > 0) {
         player.cards.push(this.deck.pop());
       }
-      // Don't end turn — player still needs to draw
     }
 
     return { broadcast: true, events };
@@ -493,7 +466,7 @@ class CaboGame {
     if (this.caboCallerIndex !== null) return null;
 
     this.caboCallerIndex = playerIndex;
-    this.caboPassed = -1; // -1 so first _nextTurn brings it to 0 (this turn doesn't count)
+    this.caboPassed = -1;
 
     const events = [{
       target: 'all',
@@ -519,7 +492,6 @@ class CaboGame {
     return { broadcast: true };
   }
 
-  // ===== Internal =====
   _nextTurn() {
     this.drawnCard = null;
     this.turnPhase = 'start';

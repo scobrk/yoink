@@ -6,9 +6,10 @@
   <title>Cabo an der Riss</title>
   <link rel="stylesheet" href="/css/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
 </head>
 <body>
+
   <!-- Lobby Screen -->
   <div id="lobby-screen" class="screen active">
     <div class="lobby-container">
@@ -43,6 +44,7 @@
 
   <!-- Game Screen -->
   <div id="game-screen" class="screen">
+
     <div id="game-header">
       <span id="room-info"></span>
       <span id="round-info"></span>
@@ -54,40 +56,50 @@
       <div id="scores-list"></div>
     </div>
 
+    <!-- Poker Table Layout -->
     <div id="game-table">
+
+      <!-- Opponent seats: JS populates .seat elements here -->
       <div id="opponents-area"></div>
 
-      <div id="table-center">
-        <div id="deck-area">
-          <div id="deck" class="card card-back clickable">
-            <div class="card-back-design">
-              <div class="card-back-border">
-                <div class="card-back-pattern">&#x1F9AB;</div>
+      <!-- Oval felt table with deck + discard -->
+      <div id="table-felt">
+        <div id="table-piles">
+          <div id="deck-area">
+            <div id="deck" class="card card-back clickable">
+              <div class="card-back-design">
+                <div class="card-back-border">
+                  <div class="card-back-pattern">&#x1F9AB;</div>
+                </div>
               </div>
+              <span id="deck-count" class="badge"></span>
             </div>
-            <span id="deck-count" class="badge"></span>
+            <span class="pile-label">Stapel</span>
           </div>
-          <span class="label">Stapel</span>
-        </div>
-        <div id="discard-area">
-          <div id="discard" class="card empty-pile">
-            <span class="empty-label">Leer</span>
+          <div id="discard-area">
+            <div id="discard" class="card empty-pile">
+              <span class="empty-label">Leer</span>
+            </div>
+            <span class="pile-label">Ablage</span>
           </div>
-          <span class="label">Ablage</span>
         </div>
       </div>
 
+      <!-- Drawn card: shown between table and my area -->
       <div id="drawn-card-area" style="display:none">
         <span id="drawn-label">Gezogene Karte:</span>
         <div id="drawn-card" class="card"></div>
       </div>
 
+      <!-- My seat -->
       <div id="my-area">
         <div id="my-name-tag"></div>
         <div id="my-cards"></div>
       </div>
-    </div>
 
+    </div><!-- #game-table -->
+
+    <!-- Control bar: status message + action buttons -->
     <div id="status-bar">
       <div id="status-message"></div>
       <div id="action-buttons"></div>
@@ -96,7 +108,8 @@
     <div id="cabo-banner" style="display:none">
       <span>CABO!</span>
     </div>
-  </div>
+
+  </div><!-- #game-screen -->
 
   <!-- Reveal Overlay -->
   <div id="reveal-overlay" style="display:none">
@@ -107,7 +120,7 @@
     </div>
   </div>
 
-  <!-- Temporary Peek/Spy Overlay -->
+  <!-- Peek/Spy Overlay -->
   <div id="peek-overlay" style="display:none">
     <div class="peek-content">
       <div id="peek-card" class="card card-large"></div>
@@ -124,25 +137,25 @@
         <h3>Ziel</h3>
         <p>Habe die niedrigste Summe an Kartenwerten in deiner Hand.</p>
         <h3>Kartenwerte</h3>
-        <p>Joker=0, A=1, 2&ndash;10=Wert, J=10, Q=10, <strong>roter K=&minus;1</strong>, schwarzer K=10</p>
+        <p>Karten haben Werte von <strong>0 bis 13</strong> (56 Karten, je 4&times; jeder Wert).</p>
         <h3>Spielablauf</h3>
         <p>Zu Beginn siehst du 2 deiner 4 Karten. Dann reihum:</p>
         <ul>
           <li><strong>Ziehen:</strong> Nimm vom Stapel oder der Ablage</li>
           <li><strong>Tauschen:</strong> Ersetze eine deiner Karten</li>
-          <li><strong>Ablegen:</strong> Wirf die gezogene Karte ab</li>
+          <li><strong>Ablegen:</strong> Wirf die gezogene Karte ab (Spezialfunktion m&ouml;glich)</li>
         </ul>
-        <h3>Karte ablegen (Slammen)</h3>
-        <p>Vor dem Ziehen kannst du Karten aus deiner Hand ablegen, die den gleichen Wert wie die oberste Ablagekarte haben. Paare und Drillinge auf einmal m&ouml;glich! Falsch? Strafkarte vom Stapel.</p>
-        <h3>Spezialkarten (beim Ablegen)</h3>
+        <h3>Karten ablegen (Slammen)</h3>
+        <p>Vor dem Ziehen kannst du Karten aus deiner Hand ablegen, die denselben Wert wie die oberste Ablagekarte haben. Mehrere auf einmal m&ouml;glich! Falsch? Strafkarte vom Stapel.</p>
+        <h3>Spezialkarten (beim Ablegen aktiviert)</h3>
         <ul>
-          <li><strong>7, 8 &mdash; Blick:</strong> Sieh dir eine eigene Karte an</li>
-          <li><strong>9, 10 &mdash; Spion:</strong> Sieh dir eine Karte eines Mitspielers an</li>
-          <li><strong>J &mdash; Tausch:</strong> Tausche blind eine Karte mit einem Mitspieler</li>
-          <li><strong>Q &mdash; Blick, Spion &amp; Tausch:</strong> Sieh eigene + fremde Karte, dann optional tauschen</li>
+          <li><strong>7, 8 &mdash; PEEK:</strong> Sieh dir eine eigene Karte an</li>
+          <li><strong>9, 10 &mdash; SPY:</strong> Sieh dir eine Karte eines Mitspielers an</li>
+          <li><strong>11, 12 &mdash; SWAP:</strong> Tausche blind eine Karte mit einem Mitspieler</li>
+          <li><strong>13 &mdash; KING:</strong> Sieh eigene + fremde Karte, dann optional tauschen</li>
         </ul>
         <h3>Cabo rufen</h3>
-        <p>Glaubst du die niedrigste Summe zu haben, rufe <strong>CABO</strong>. Jeder andere Spieler hat noch einen Zug. Dann wird aufgedeckt. Liegst du falsch: +10 Strafpunkte!</p>
+        <p>Glaubst du die niedrigste Summe zu haben, rufe <strong>CABO</strong>. Jeder andere Spieler hat noch einen Zug. Liegst du falsch: +10 Strafpunkte!</p>
       </div>
     </div>
   </div>
