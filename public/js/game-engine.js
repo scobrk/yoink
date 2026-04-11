@@ -269,16 +269,21 @@ class CaboGame {
     if (this.state !== 'playing') return null;
     const playerIndex = this.getPlayerIndex(playerId);
     if (playerIndex !== this.currentPlayerIndex || this.turnPhase !== 'start') return null;
-    if (!cardIndices || cardIndices.length === 0 || this.discardPile.length === 0) return null;
+    if (!cardIndices || cardIndices.length < 2) return null; // must select at least 2
     const player = this.players[playerIndex];
-    const discardTopValue = cardValue(this.discardPile[this.discardPile.length - 1]);
     const sorted = [...new Set(cardIndices)].sort((a, b) => b - a);
     for (const idx of sorted) { if (idx < 0 || idx >= player.cards.length) return null; }
-    const allMatch = sorted.every(idx => cardValue(player.cards[idx]) === discardTopValue);
+
+    // Cards must all match each other (not the discard)
+    const targetValue = cardValue(player.cards[sorted[sorted.length - 1]]);
+    const allMatch = sorted.every(idx => cardValue(player.cards[idx]) === targetValue);
+    const slammedCards = sorted.map(idx => ({ ...player.cards[idx] }));
     const events = [];
 
     if (allMatch) {
-      for (const idx of sorted) { const r = player.cards.splice(idx, 1)[0]; this.discardPile.push(r); }
+      // Remove slammed cards (descending so indices stay valid)
+      for (const idx of sorted) { player.cards.splice(idx, 1); }
+      // Adjust knownCards indices
       const newKnown = new Set();
       for (const k of player.knownCards) {
         let adj = k;
@@ -286,7 +291,9 @@ class CaboGame {
         if (adj >= 0) newKnown.add(adj);
       }
       player.knownCards = newKnown;
-      events.push({ target: 'all', type: 'slam-success', data: { playerIndex, playerName: player.name, count: sorted.length } });
+      // Replace with 1 unknown card — player doesn't see its value
+      if (this.deck.length > 0) player.cards.push(this.deck.pop());
+      events.push({ target: 'all', type: 'slam-success', data: { playerIndex, playerName: player.name, count: sorted.length, cards: slammedCards } });
       if (player.cards.length === 0 && this.caboCallerIndex === null) {
         this.caboCallerIndex = playerIndex;
         this.caboPassed = -1;
@@ -294,8 +301,9 @@ class CaboGame {
       }
       this._nextTurn();
     } else {
-      events.push({ target: 'all', type: 'slam-fail', data: { playerIndex, playerName: player.name } });
+      // Fail: add penalty card, turn continues (player still draws normally)
       if (this.deck.length > 0) player.cards.push(this.deck.pop());
+      events.push({ target: 'all', type: 'slam-fail', data: { playerIndex, playerName: player.name, cards: slammedCards } });
     }
     return { broadcast: true, events };
   }

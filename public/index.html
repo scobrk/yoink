@@ -10,9 +10,6 @@
 </head>
 <body>
 
-  <!-- Language toggle (always visible) -->
-  <button id="lang-toggle" class="lang-fab" title="Toggle language">EN</button>
-
   <!-- Lobby Screen -->
   <div id="lobby-screen" class="screen active">
     <div class="lobby-container">
@@ -20,6 +17,7 @@
         <div class="logo-beaver">&#x1F9AB;</div>
         <h1>Cabo <span class="logo-sub">an der Riss</span></h1>
         <p class="tagline" data-i18n="tagline">Ein Kartenspiel aus Biberach</p>
+        <button id="lang-toggle-lobby" class="btn-lang-lobby">DE / EN</button>
       </div>
 
       <div id="join-create">
@@ -51,7 +49,10 @@
     <div id="game-header">
       <span id="room-info"></span>
       <span id="round-info"></span>
-      <span id="scores-toggle" title="Punkte">&#x1F3C6;</span>
+      <div class="header-right">
+        <button id="lang-toggle" class="btn-lang-header">DE</button>
+        <span id="scores-toggle" title="Punkte">&#x1F3C6;</span>
+      </div>
     </div>
 
     <div id="scores-panel" style="display:none">
@@ -108,6 +109,25 @@
 
   </div>
 
+  <!-- Slam Result Overlay -->
+  <div id="slam-overlay" style="display:none">
+    <div class="slam-content">
+      <h3 id="slam-result-title"></h3>
+      <div id="slam-result-cards"></div>
+    </div>
+  </div>
+
+  <!-- Drawn Card Modal -->
+  <div id="drawn-modal" style="display:none">
+    <div class="drawn-modal-content">
+      <p id="drawn-modal-label"></p>
+      <div id="drawn-modal-card" class="card card-large"></div>
+      <p class="drawn-modal-hint" id="drawn-modal-hint"></p>
+      <div id="drawn-modal-targets"></div>
+      <div id="drawn-modal-actions"></div>
+    </div>
+  </div>
+
   <!-- Reveal Overlay -->
   <div id="reveal-overlay" style="display:none">
     <div class="reveal-content">
@@ -135,6 +155,7 @@
   </div>
 
   <button id="rules-btn" class="rules-fab" title="Spielregeln">?</button>
+
 
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="/js/game-engine.js"></script>

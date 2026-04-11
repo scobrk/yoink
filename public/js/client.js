@@ -119,7 +119,7 @@ const TRANSLATIONS = {
         <li><strong>Ablegen:</strong> Wirf die gezogene Karte ab (Spezialfunktion m&ouml;glich)</li>
       </ul>
       <h3>Slammen</h3>
-      <p>Vor dem Ziehen kannst du Karten mit demselben Wert wie die Ablage aus deiner Hand legen. Falsch? Strafkarte.</p>
+      <p>Vor dem Ziehen kannst du 2&ndash;4 eigene Karten mit <strong>demselben Wert</strong> gleichzeitig ablegen. Sind alle gleich, werden sie durch eine verdeckte Karte ersetzt. Falsch? Strafkarte.</p>
       <h3>Spezialkarten</h3>
       <ul>
         <li><strong>7, 8 &mdash; PEEK:</strong> Sieh dir eine eigene Karte an</li>
@@ -225,7 +225,7 @@ const TRANSLATIONS = {
         <li><strong>Discard:</strong> Discard the drawn card (may trigger a power)</li>
       </ul>
       <h3>Slamming</h3>
-      <p>Before drawing, you can slam cards from your hand that match the discard top value. Wrong? Draw a penalty card.</p>
+      <p>Before drawing, you can slam 2&ndash;4 of your own cards that all have the <strong>same value</strong>. If they all match, they are replaced by one face-down card. Wrong? Draw a penalty card.</p>
       <h3>Power Cards</h3>
       <ul>
         <li><strong>7, 8 &mdash; PEEK:</strong> Look at one of your own cards</li>
@@ -248,12 +248,12 @@ function t(key, ...args) {
 }
 
 function applyLanguage() {
-  // Update lang toggle label
-  const toggle = $('lang-toggle');
-  if (toggle) {
-    const other = lang === 'de' ? 'en' : 'de';
-    toggle.innerHTML = `<span class="lang-active">${lang.toUpperCase()}</span> / ${other.toUpperCase()}`;
-  }
+  // Update both lang toggles
+  const other = lang === 'de' ? 'en' : 'de';
+  const hdr = $('lang-toggle');
+  if (hdr) hdr.textContent = lang.toUpperCase();
+  const lby = $('lang-toggle-lobby');
+  if (lby) lby.textContent = `${lang.toUpperCase()} / ${other.toUpperCase()}`;
 
   // Update all data-i18n elements
   document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -499,10 +499,12 @@ function handleEvent(evtType, data) {
     case 'slam-success':
       showBubble(data.playerIndex, t('bubbleSlamOk', data.count));
       showToast(t('slamSuccess', data.playerName, data.count));
+      if (data.cards && data.cards.length) showSlamOverlay(data.cards, true);
       break;
     case 'slam-fail':
       showBubble(data.playerIndex, t('bubbleSlamFail'));
       showToast(t('slamFail', data.playerName));
+      if (data.cards && data.cards.length) showSlamOverlay(data.cards, false);
       break;
     case 'player-disconnected':
       showToast(t('disconnected', data.name));
@@ -590,6 +592,17 @@ function animateSwap(actorIndex, actorCardPos, targetIndex, targetCardPos) {
   setTimeout(() => { ghostA.remove(); ghostB.remove(); }, 480);
 }
 
+function showSlamOverlay(cards, success) {
+  const overlay = $('slam-overlay');
+  const title = $('slam-result-title');
+  const cardsEl = $('slam-result-cards');
+  title.textContent = success ? 'SLAM!' : 'MISS!';
+  title.style.color = success ? 'var(--gold)' : 'var(--red-l)';
+  cardsEl.innerHTML = cards.map(c => buildCardFace(c, 'card-small')).join('');
+  overlay.style.display = 'flex';
+  setTimeout(() => { overlay.style.display = 'none'; }, 1800);
+}
+
 function showBubble(playerIndex, text) {
   if (playerIndex == null || !gameState) return;
   let bubbleEl = null;
@@ -659,6 +672,7 @@ $('scores-toggle').addEventListener('click', () => {
 });
 
 $('lang-toggle').addEventListener('click', toggleLanguage);
+$('lang-toggle-lobby').addEventListener('click', toggleLanguage);
 
 // ===== Create Room (Host) =====
 function createRoom() {
@@ -911,21 +925,70 @@ function renderTableCenter() {
 }
 
 function renderDrawnCard() {
-  const area = $('drawn-card-area');
-  if (gameState.drawnCard && (gameState.turnPhase === 'drawn' || gameState.turnPhase === 'discard_swap')) {
-    area.style.visibility = 'visible';
-    const card = gameState.drawnCard;
-    const lbl = powerLabel(card.value);
-    const el = $('drawn-card');
-    el.className = `card card-face ${powerClass(card.value)}`;
-    if (lbl) {
-      el.innerHTML = `<span class="card-corner">${card.value}</span><span class="card-name">${lbl}</span>`;
-    } else {
-      el.innerHTML = `<span class="card-num">${card.value}</span>`;
-    }
-    $('drawn-label').textContent = gameState.turnPhase === 'discard_swap' ? t('fromDiscard') : t('drawn');
+  // drawn-card-area is kept hidden — it's just a grid placeholder
+  $('drawn-card-area').style.visibility = 'hidden';
+
+  const modal = $('drawn-modal');
+  const isMyTurn = gameState.myIndex === gameState.currentPlayerIndex;
+
+  if (!gameState.drawnCard || !isMyTurn ||
+      (gameState.turnPhase !== 'drawn' && gameState.turnPhase !== 'discard_swap')) {
+    modal.style.display = 'none';
+    return;
+  }
+
+  modal.style.display = 'flex';
+
+  // Label
+  $('drawn-modal-label').textContent =
+    gameState.turnPhase === 'discard_swap' ? t('fromDiscard') : t('drawn');
+
+  // Card
+  const card = gameState.drawnCard;
+  const lbl = powerLabel(card.value);
+  const cardEl = $('drawn-modal-card');
+  cardEl.className = `card card-face card-large ${powerClass(card.value)}`;
+  cardEl.innerHTML = lbl
+    ? `<span class="card-corner">${card.value}</span><span class="card-name">${lbl}</span>`
+    : `<span class="card-num">${card.value}</span>`;
+
+  // Hint
+  $('drawn-modal-hint').textContent = t('whichCard');
+
+  // My cards as swap targets
+  const me = gameState.players.find(p => p.isMe);
+  const targetsEl = $('drawn-modal-targets');
+  if (me) {
+    targetsEl.innerHTML = me.cards.map((myCard, i) => {
+      if (myCard.faceUp) {
+        const myLbl = powerLabel(myCard.value);
+        const inner = myLbl
+          ? `<span class="card-corner">${myCard.value}</span><span class="card-name">${myLbl}</span>`
+          : `<span class="card-num">${myCard.value}</span>`;
+        return `<div class="card card-face card-small clickable card-highlight ${powerClass(myCard.value)}" data-index="${i}">${inner}</div>`;
+      }
+      return `<div class="card card-back card-small clickable card-highlight" data-index="${i}">
+        <div class="card-back-design"><div class="card-back-border"><div class="card-back-pattern">\u{1F9AB}</div></div></div>
+      </div>`;
+    }).join('');
+    targetsEl.querySelectorAll('.card').forEach(el => {
+      el.addEventListener('click', () => {
+        modal.style.display = 'none';
+        sendAction('swap-card', { cardIndex: parseInt(el.dataset.index) });
+      });
+    });
+  }
+
+  // Actions: discard button only for deck-drawn phase (not discard_swap which must swap)
+  const actionsEl = $('drawn-modal-actions');
+  if (gameState.turnPhase === 'drawn') {
+    actionsEl.innerHTML = `<button class="btn btn-secondary btn-small" id="btn-modal-discard">${t('discardCard')}</button>`;
+    $('btn-modal-discard').addEventListener('click', () => {
+      modal.style.display = 'none';
+      sendAction('discard-drawn');
+    });
   } else {
-    area.style.visibility = 'hidden';
+    actionsEl.innerHTML = '';
   }
 }
 
@@ -1037,7 +1100,7 @@ function renderStatus() {
     if (slamMode) {
       msg.textContent = t('selectSlam', slamSelection.length);
       btns.innerHTML = `
-        <button class="btn btn-primary btn-small" id="btn-slam-confirm" ${slamSelection.length === 0 ? 'disabled' : ''}>${t('doSlam')}</button>
+        <button class="btn btn-primary btn-small" id="btn-slam-confirm" ${slamSelection.length < 2 ? 'disabled' : ''}>${t('doSlam')}</button>
         <button class="btn btn-secondary btn-small" id="btn-slam-cancel">${t('cancelSlam')}</button>
       `;
       $('btn-slam-confirm').addEventListener('click', () => {
@@ -1050,10 +1113,8 @@ function renderStatus() {
     msg.textContent = t('yourTurn') + (gameState.caboCallerIndex !== null ? t('lastRoundBang') : '');
     // Build all start-phase buttons in one innerHTML write — += destroys previous listeners
     const startBtns = [];
-    if (gameState.discardTop) {
-      startBtns.push({ id: 'btn-slam', cls: 'btn-secondary', text: t('slam'),
-        fn: () => { slamMode = true; slamSelection = []; renderMyCards(); renderStatus(); } });
-    }
+    startBtns.push({ id: 'btn-slam', cls: 'btn-secondary', text: t('slam'),
+      fn: () => { slamMode = true; slamSelection = []; renderMyCards(); renderStatus(); } });
     if (gameState.caboCallerIndex === null) {
       startBtns.push({ id: 'btn-cabo', cls: 'btn-danger', text: 'CABO!',
         fn: () => sendAction('call-cabo') });
@@ -1069,13 +1130,8 @@ function renderStatus() {
     ).join('');
     startBtns.forEach(b => $(b.id).addEventListener('click', b.fn));
 
-  } else if (gameState.turnPhase === 'drawn') {
-    msg.textContent = t('swapOrDiscard');
-    btns.innerHTML = `<button class="btn btn-secondary btn-small" id="btn-discard">${t('discardCard')}</button>`;
-    $('btn-discard').addEventListener('click', () => sendAction('discard-drawn'));
-
-  } else if (gameState.turnPhase === 'discard_swap') {
-    msg.textContent = t('whichCard');
+  } else if (gameState.turnPhase === 'drawn' || gameState.turnPhase === 'discard_swap') {
+    // Modal handles these phases — nothing needed in status bar
 
   } else if (gameState.turnPhase === 'power') {
     const power = gameState.powerState;

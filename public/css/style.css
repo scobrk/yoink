@@ -873,22 +873,115 @@ input::placeholder { color: var(--text-dim); }
 .rules-fab:hover  { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 var(--shadow); }
 .rules-fab:active { transform: translate(2px, 2px);  box-shadow: 1px 1px 0 var(--shadow); }
 
-.lang-fab {
-  position: fixed; bottom: 1rem; right: 3.5rem;
-  height: 36px; padding: 0 0.6rem;
-  background: var(--wood); color: var(--text-dim);
-  border: 3px solid var(--ink);
-  box-shadow: 3px 3px 0 var(--shadow);
+/* Lang toggle — in game header */
+.header-right {
+  display: flex; align-items: center; gap: 0.6rem;
+}
+.btn-lang-header {
+  background: var(--wood);
+  color: var(--text-dim);
+  border: 2px solid var(--ink);
+  box-shadow: 2px 2px 0 var(--shadow);
   font-family: 'Pixelify Sans', monospace;
   font-size: 0.72rem; font-weight: 700;
   letter-spacing: 0.08em;
-  cursor: pointer; z-index: 30;
-  display: flex; align-items: center; gap: 0.25rem;
+  padding: 2px 7px;
+  cursor: pointer;
   transition: transform 0.06s, box-shadow 0.06s;
 }
-.lang-fab:hover  { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 var(--shadow); }
-.lang-fab:active { transform: translate(2px, 2px);  box-shadow: 1px 1px 0 var(--shadow); }
-.lang-fab .lang-active { color: var(--gold); }
+.btn-lang-header:hover  { transform: translate(-1px,-1px); box-shadow: 3px 3px 0 var(--shadow); color: var(--gold); }
+.btn-lang-header:active { transform: translate(1px, 1px);  box-shadow: 1px 1px 0 var(--shadow); }
+
+/* Lang toggle — in lobby */
+.btn-lang-lobby {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-family: 'Pixelify Sans', monospace;
+  font-size: 0.72rem;
+  cursor: pointer;
+  padding: 0.25rem 0;
+  margin-top: 0.3rem;
+  letter-spacing: 0.1em;
+  display: block;
+  width: 100%;
+}
+.btn-lang-lobby:hover { color: var(--gold); }
+
+/* ===== Slam Result Overlay ===== */
+#slam-overlay {
+  position: fixed; inset: 0;
+  background: rgba(8,16,8,0.80);
+  z-index: 110;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.slam-content {
+  background: rgba(20, 38, 20, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 3px solid var(--ink);
+  box-shadow: 5px 5px 0 var(--shadow);
+  padding: 1.5rem 2rem;
+  text-align: center;
+}
+#slam-result-title {
+  font-family: 'Pixelify Sans', monospace;
+  font-size: 1.4rem; font-weight: 700;
+  margin-bottom: 1rem;
+  text-shadow: 2px 2px 0 var(--shadow);
+}
+#slam-result-cards {
+  display: flex; gap: 10px; justify-content: center;
+}
+
+/* ===== Drawn Card Modal ===== */
+#drawn-modal {
+  position: fixed; inset: 0;
+  background: rgba(8,16,8,0.78);
+  z-index: 90;
+  display: flex; align-items: center; justify-content: center;
+}
+.drawn-modal-content {
+  background: rgba(20, 38, 20, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 3px solid var(--ink);
+  box-shadow: 5px 5px 0 var(--shadow);
+  padding: 1.5rem;
+  text-align: center;
+  width: 90%;
+  max-width: 340px;
+}
+#drawn-modal-label {
+  font-family: 'Pixelify Sans', monospace;
+  font-size: 0.82rem;
+  color: var(--gold-l);
+  margin-bottom: 0.75rem;
+}
+#drawn-modal-card {
+  margin: 0 auto 1rem;
+}
+.drawn-modal-hint {
+  font-family: 'Pixelify Sans', monospace;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  margin-bottom: 0.75rem;
+}
+#drawn-modal-targets {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+#drawn-modal-targets .card {
+  cursor: pointer;
+  transition: transform 0.06s;
+}
+#drawn-modal-targets .card:hover  { transform: translate(-2px,-3px); box-shadow: 5px 5px 0 var(--shadow); }
+#drawn-modal-targets .card:active { transform: translate(1px, 1px);  box-shadow: 2px 2px 0 var(--shadow); }
+#drawn-modal-actions { display: flex; gap: 0.5rem; justify-content: center; }
 
 /* Score table */
 .score-table {
