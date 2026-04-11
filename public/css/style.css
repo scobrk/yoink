@@ -77,11 +77,11 @@ body {
   text-align: center;
 }
 
-.logo-beaver { font-size: 3rem; line-height: 1; margin-bottom: 0.25rem; }
+.logo-beaver { font-size: 3.5rem; line-height: 1; margin-bottom: 0.25rem; }
 
 .logo h1 {
   font-family: 'Pixelify Sans', monospace;
-  font-size: 2.4rem;
+  font-size: 2.8rem;
   font-weight: 700;
   color: var(--gold);
   letter-spacing: 0.06em;
@@ -107,9 +107,9 @@ input {
   background: var(--pine);
   border: 3px solid var(--ink);
   border-radius: 0;
-  padding: 0.75rem 1rem;
+  padding: 0.9rem 1rem;
   color: var(--text);
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-family: 'Pixelify Sans', monospace;
   outline: none;
   margin-bottom: 0.5rem;
@@ -123,10 +123,10 @@ input:focus {
 input::placeholder { color: var(--text-dim); }
 
 .btn {
-  padding: 0.75rem 1.5rem;
+  padding: 0.85rem 1.5rem;
   border: 3px solid var(--ink);
   border-radius: 0;
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 700;
   font-family: 'Pixelify Sans', monospace;
   cursor: pointer;
@@ -145,7 +145,7 @@ input::placeholder { color: var(--text-dim); }
 .btn-secondary:hover { background: var(--wood-l); }
 .btn-danger    { background: var(--red);   color: var(--text); }
 .btn-danger:hover    { background: var(--red-l); }
-.btn-small { padding: 0.4rem 0.75rem; font-size: 0.78rem; }
+.btn-small { padding: 0.55rem 1rem; font-size: 0.9rem; }
 
 .divider {
   display: flex; align-items: center;
@@ -214,11 +214,11 @@ input::placeholder { color: var(--text-dim); }
 
 #game-header {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 0.4rem 1rem;
+  padding: 0.5rem 1rem;
   background: var(--pine);
   border-bottom: 3px solid var(--ink);
   box-shadow: 0 3px 0 var(--shadow);
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   color: var(--text-dim);
   position: relative; z-index: 10;
   flex-shrink: 0;
@@ -258,9 +258,9 @@ input::placeholder { color: var(--text-dim); }
   justify-content: center;
   align-items: center;
   justify-items: center;
-  padding: 0.75rem 0.5rem;
-  row-gap: 0.5rem;
-  column-gap: 1rem;
+  padding: 0.75rem 0.75rem;
+  row-gap: 0.6rem;
+  column-gap: 1.25rem;
   overflow: hidden;
 }
 
@@ -303,8 +303,8 @@ input::placeholder { color: var(--text-dim); }
 }
 .seat-pos-left .card-small,
 .seat-pos-right .card-small {
-  width: 76px;
-  height: 52px;
+  width: 84px;
+  height: 58px;
 }
 .seat-pos-left .card-small .card-back-pattern,
 .seat-pos-right .card-small .card-back-pattern { font-size: 0.6rem; }
@@ -318,14 +318,14 @@ input::placeholder { color: var(--text-dim); }
 /* Name tags */
 .seat-name {
   font-family: 'Pixelify Sans', monospace;
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   color: var(--text-dim);
-  padding: 2px 8px;
+  padding: 3px 10px;
   background: var(--pine);
   border: 2px solid var(--ink);
   box-shadow: 2px 2px 0 var(--shadow);
   white-space: nowrap;
-  max-width: 100px;
+  max-width: 110px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -358,7 +358,7 @@ input::placeholder { color: var(--text-dim); }
 
 .seat-name .cabo-tag { color: var(--red-l); font-weight: 700; margin-left: 0.3rem; }
 
-.seat-cards { display: flex; gap: 4px; justify-content: center; }
+.seat-cards { display: flex; gap: 5px; justify-content: center; }
 
 /* ── Pixel Felt Table ── */
 #table-felt {
@@ -366,19 +366,19 @@ input::placeholder { color: var(--text-dim); }
   border: 3px solid var(--ink);
   outline: 2px solid var(--felt-l);
   outline-offset: -6px;
-  padding: 0.65rem 1.3rem;
+  padding: 0.85rem 1.6rem;
   box-shadow: 4px 4px 0 var(--shadow);
 }
 
-#table-piles { display: flex; gap: 1.75rem; align-items: center; }
+#table-piles { display: flex; gap: 2rem; align-items: center; }
 #deck-area, #discard-area { position: relative; text-align: center; }
 
 .pile-label {
   display: block;
   font-family: 'Pixelify Sans', monospace;
-  font-size: 0.6rem;
+  font-size: 0.7rem;
   color: rgba(200,230,200,0.5);
-  margin-top: 0.25rem;
+  margin-top: 0.3rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
@@ -408,12 +408,12 @@ input::placeholder { color: var(--text-dim); }
 #drawn-card-area {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  min-height: calc(90px + 0.5rem);
+  gap: 0.75rem;
+  min-height: calc(100px + 0.6rem);
 }
 #drawn-label {
   font-family: 'Pixelify Sans', monospace;
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   color: var(--gold-l);
 }
 
@@ -422,12 +422,12 @@ input::placeholder { color: var(--text-dim); }
   background: var(--cream);
   color: var(--ink);
   font-family: 'Pixelify Sans', monospace;
-  font-size: 0.68rem;
+  font-size: 0.78rem;
   font-weight: 600;
-  padding: 5px 10px;
+  padding: 6px 12px;
   border: 2px solid var(--ink);
   box-shadow: 2px 2px 0 var(--shadow);
-  max-width: 130px;
+  max-width: 150px;
   text-align: center;
   white-space: normal;
   word-break: break-word;
@@ -438,9 +438,9 @@ input::placeholder { color: var(--text-dim); }
 
 /* Top seat: bubble sits below cards → triangle points UP */
 .seat-pos-top .bubble {
-  max-width: 200px;
-  font-size: 0.7rem;
-  padding: 5px 12px;
+  max-width: 220px;
+  font-size: 0.8rem;
+  padding: 6px 14px;
 }
 /* Dark border triangle (::before) + cream fill triangle (::after) */
 .seat-pos-top .bubble::before {
@@ -524,13 +524,13 @@ input::placeholder { color: var(--text-dim); }
 /* ── My Area ── */
 #my-area {
   display: flex; flex-direction: column;
-  align-items: center; gap: 0.3rem;
+  align-items: center; gap: 0.4rem;
 }
 #my-name-tag {
   font-family: 'Pixelify Sans', monospace;
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   color: var(--text-dim);
-  padding: 2px 10px;
+  padding: 3px 12px;
   background: var(--pine);
   border: 2px solid var(--ink);
   box-shadow: 2px 2px 0 var(--shadow);
@@ -554,17 +554,17 @@ input::placeholder { color: var(--text-dim); }
   vertical-align: middle;
   animation: px-blink 0.9s step-end infinite;
 }
-#my-cards { display: flex; gap: 6px; justify-content: center; }
+#my-cards { display: flex; gap: 8px; justify-content: center; }
 
 /* ===== Cards ===== */
 .card {
-  width: 64px; height: 90px;
+  width: 72px; height: 100px;
   border-radius: 0;
   position: relative; flex-shrink: 0;
   transition: transform 0.06s;
 }
-.card-large { width: 88px; height: 123px; }
-.card-small { width: 50px; height: 70px; }
+.card-large { width: 96px; height: 136px; }
+.card-small { width: 56px; height: 78px; }
 
 /* Card Back — diagonal stripe placeholder */
 .card-back {
@@ -603,7 +603,7 @@ input::placeholder { color: var(--text-dim); }
 /* Value cards: big number */
 .card-num {
   font-family: 'Pixelify Sans', monospace;
-  font-weight: 700; font-size: 1.75rem;
+  font-weight: 700; font-size: 2rem;
   line-height: 1;
   color: var(--ink);
 }
@@ -611,26 +611,26 @@ input::placeholder { color: var(--text-dim); }
 /* Power cards: function name big */
 .card-name {
   font-family: 'Pixelify Sans', monospace;
-  font-weight: 700; font-size: 0.95rem;
+  font-weight: 700; font-size: 1.05rem;
   line-height: 1; letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
 /* Power card value in top-left corner */
 .card-corner {
-  position: absolute; top: 3px; left: 4px;
+  position: absolute; top: 4px; left: 5px;
   font-family: 'Pixelify Sans', monospace;
-  font-size: 0.6rem; font-weight: 700;
+  font-size: 0.65rem; font-weight: 700;
   line-height: 1; opacity: 0.65;
 }
 
 /* Size variants */
-.card-small .card-num    { font-size: 1.2rem; }
-.card-small .card-name   { font-size: 0.65rem; }
-.card-small .card-corner { font-size: 0.45rem; top: 2px; left: 3px; }
-.card-large .card-num    { font-size: 2.4rem; }
-.card-large .card-name   { font-size: 1.3rem; }
-.card-large .card-corner { font-size: 0.8rem; top: 5px; left: 7px; }
+.card-small .card-num    { font-size: 1.35rem; }
+.card-small .card-name   { font-size: 0.72rem; }
+.card-small .card-corner { font-size: 0.48rem; top: 2px; left: 3px; }
+.card-large .card-num    { font-size: 2.8rem; }
+.card-large .card-name   { font-size: 1.5rem; }
+.card-large .card-corner { font-size: 0.9rem; top: 6px; left: 8px; }
 
 /* Power colour coding — flat pixel fills */
 .power-none { background: var(--cream);   color: var(--ink); }
@@ -670,8 +670,8 @@ input::placeholder { color: var(--text-dim); }
 
 /* ===== Status Bar — fixed height ===== */
 #status-bar {
-  min-height: 96px;
-  padding: 0.5rem 1rem 0.6rem;
+  min-height: 108px;
+  padding: 0.6rem 1rem 0.7rem;
   text-align: center;
   background: var(--pine);
   border-top: 3px solid var(--ink);
@@ -680,11 +680,11 @@ input::placeholder { color: var(--text-dim); }
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 0.4rem;
+  gap: 0.5rem;
 }
 #status-message {
   font-family: 'Pixelify Sans', monospace;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   min-height: 1.3em;
   color: var(--text);
 }
@@ -693,9 +693,9 @@ input::placeholder { color: var(--text-dim); }
   gap: 0.5rem;
   justify-content: center;
   flex-wrap: wrap;
-  min-height: 36px;
+  min-height: 40px;
 }
-#action-buttons .btn { font-size: 0.78rem; padding: 0.45rem 0.85rem; }
+#action-buttons .btn { font-size: 0.9rem; padding: 0.55rem 1rem; }
 
 /* ===== Cabo Banner ===== */
 #cabo-banner {
@@ -860,15 +860,39 @@ input::placeholder { color: var(--text-dim); }
 }
 
 /* ===== Responsive ===== */
-@media (min-width: 600px) {
-  .card       { width: 66px; height: 93px; }
-  .card-large { width: 90px; height: 126px; }
-  .card-small { width: 50px; height: 70px; }
+@media (min-width: 480px) {
+  .card       { width: 80px; height: 112px; }
+  .card-large { width: 104px; height: 146px; }
+  .card-small { width: 62px; height: 87px; }
   .seat-pos-left .card-small,
-  .seat-pos-right .card-small { width: 86px; height: 58px; }
+  .seat-pos-right .card-small { width: 96px; height: 66px; }
   #table-piles { gap: 2.5rem; }
-  #table-felt  { padding: 0.9rem 2rem; }
-  .card-num    { font-size: 2rem; }
-  .card-name   { font-size: 1.1rem; }
-  #deck, #discard, #drawn-card { width: 92px; height: 128px; }
+  #table-felt  { padding: 1rem 2rem; }
+  .card-num    { font-size: 2.3rem; }
+  .card-name   { font-size: 1.2rem; }
+  .card-small .card-num  { font-size: 1.5rem; }
+  .card-small .card-name { font-size: 0.8rem; }
+  #deck, #discard, #drawn-card { width: 104px; height: 146px; }
+  #drawn-card-area { min-height: calc(112px + 0.6rem); }
+  #status-bar { min-height: 116px; }
+  #action-buttons { min-height: 44px; }
+}
+
+@media (min-width: 600px) {
+  .card       { width: 88px; height: 124px; }
+  .card-large { width: 112px; height: 158px; }
+  .card-small { width: 68px; height: 95px; }
+  .seat-pos-left .card-small,
+  .seat-pos-right .card-small { width: 104px; height: 72px; }
+  #table-piles { gap: 3rem; }
+  #table-felt  { padding: 1.1rem 2.4rem; }
+  .card-num    { font-size: 2.6rem; }
+  .card-name   { font-size: 1.35rem; }
+  .card-small .card-num  { font-size: 1.65rem; }
+  .card-small .card-name { font-size: 0.88rem; }
+  #deck, #discard, #drawn-card { width: 112px; height: 158px; }
+  #drawn-card-area { min-height: calc(124px + 0.6rem); }
+  #status-bar   { min-height: 120px; }
+  #action-buttons { min-height: 46px; }
+  #game-table { column-gap: 1.5rem; row-gap: 0.75rem; }
 }
