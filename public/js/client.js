@@ -484,6 +484,7 @@ function handleEvent(evtType, data) {
       showBubble(data.actorIndex, t('bubbleSpy', data.targetName));
       break;
     case 'swap-occurred':
+      animateSwap(data.actorIndex, data.actorCard, data.targetIndex, data.targetCard);
       showBubble(data.actorIndex, t('bubbleSwap', data.targetName));
       break;
     case 'swap-drawn':
@@ -534,6 +535,59 @@ function showPeekOverlay(card, label) {
   if (peekTimeout) clearTimeout(peekTimeout);
   peekTimeout = setTimeout(() => { overlay.style.display = 'none'; }, 3000);
   overlay.onclick = () => { overlay.style.display = 'none'; if (peekTimeout) clearTimeout(peekTimeout); };
+}
+
+// ===== Swap Animation =====
+function getCardElement(playerIndex, cardIndex) {
+  if (!gameState) return null;
+  if (playerIndex === gameState.myIndex) {
+    return document.querySelectorAll('#my-cards .card')[cardIndex] || null;
+  }
+  const seat = document.querySelector(`#game-table .seat[data-player-index="${playerIndex}"]`);
+  if (!seat) return null;
+  return seat.querySelectorAll('.seat-cards .card')[cardIndex] || null;
+}
+
+function animateSwap(actorIndex, actorCardPos, targetIndex, targetCardPos) {
+  const elA = getCardElement(actorIndex, actorCardPos - 1);
+  const elB = getCardElement(targetIndex, targetCardPos - 1);
+  if (!elA || !elB) return;
+
+  const rA = elA.getBoundingClientRect();
+  const rB = elB.getBoundingClientRect();
+
+  function makeGhost(rect) {
+    const g = document.createElement('div');
+    g.className = 'card card-back swap-ghost';
+    g.style.cssText = [
+      `position:fixed`,
+      `left:${rect.left}px`,
+      `top:${rect.top}px`,
+      `width:${rect.width}px`,
+      `height:${rect.height}px`,
+      `z-index:200`,
+      `pointer-events:none`,
+      `margin:0`,
+    ].join(';');
+    g.innerHTML = '<div class="card-back-design"><div class="card-back-border"></div></div>';
+    document.body.appendChild(g);
+    return g;
+  }
+
+  const ghostA = makeGhost(rA);
+  const ghostB = makeGhost(rB);
+
+  // Two rAFs: first ensures elements are painted, second kicks off transition
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    ghostA.style.transition = 'transform 0.35s ease, opacity 0.1s ease 0.32s';
+    ghostB.style.transition = 'transform 0.35s ease, opacity 0.1s ease 0.32s';
+    ghostA.style.transform = `translate(${rB.left - rA.left}px, ${rB.top - rA.top}px)`;
+    ghostB.style.transform = `translate(${rA.left - rB.left}px, ${rA.top - rB.top}px)`;
+    ghostA.style.opacity = '0';
+    ghostB.style.opacity = '0';
+  }));
+
+  setTimeout(() => { ghostA.remove(); ghostB.remove(); }, 480);
 }
 
 function showBubble(playerIndex, text) {
@@ -994,20 +1048,26 @@ function renderStatus() {
     }
 
     msg.textContent = t('yourTurn') + (gameState.caboCallerIndex !== null ? t('lastRoundBang') : '');
+    // Build all start-phase buttons in one innerHTML write — += destroys previous listeners
+    const startBtns = [];
     if (gameState.discardTop) {
-      btns.innerHTML += `<button class="btn btn-secondary btn-small" id="btn-slam">${t('slam')}</button>`;
-      $('btn-slam').addEventListener('click', () => { slamMode = true; slamSelection = []; renderMyCards(); renderStatus(); });
+      startBtns.push({ id: 'btn-slam', cls: 'btn-secondary', text: t('slam'),
+        fn: () => { slamMode = true; slamSelection = []; renderMyCards(); renderStatus(); } });
     }
     if (gameState.caboCallerIndex === null) {
-      btns.innerHTML += `<button class="btn btn-danger btn-small" id="btn-cabo">CABO!</button>`;
-      $('btn-cabo').addEventListener('click', () => sendAction('call-cabo'));
+      startBtns.push({ id: 'btn-cabo', cls: 'btn-danger', text: 'CABO!',
+        fn: () => sendAction('call-cabo') });
     }
-    btns.innerHTML += `<button class="btn btn-primary btn-small" id="btn-draw-deck">${t('drawDeck')}</button>`;
-    $('btn-draw-deck').addEventListener('click', () => sendAction('draw-deck'));
+    startBtns.push({ id: 'btn-draw-deck', cls: 'btn-primary', text: t('drawDeck'),
+      fn: () => sendAction('draw-deck') });
     if (gameState.discardTop) {
-      btns.innerHTML += `<button class="btn btn-secondary btn-small" id="btn-draw-discard">${t('drawDiscard')}</button>`;
-      $('btn-draw-discard').addEventListener('click', () => sendAction('draw-discard'));
+      startBtns.push({ id: 'btn-draw-discard', cls: 'btn-secondary', text: t('drawDiscard'),
+        fn: () => sendAction('draw-discard') });
     }
+    btns.innerHTML = startBtns.map(b =>
+      `<button class="btn ${b.cls} btn-small" id="${b.id}">${b.text}</button>`
+    ).join('');
+    startBtns.forEach(b => $(b.id).addEventListener('click', b.fn));
 
   } else if (gameState.turnPhase === 'drawn') {
     msg.textContent = t('swapOrDiscard');
