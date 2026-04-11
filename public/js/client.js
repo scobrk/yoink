@@ -776,8 +776,11 @@ function joinRoom(code) {
 function renderFromState() {
   if (!gameState) return;
   if (gameState.turnPhase !== 'start') { slamMode = false; slamSelection = []; }
-  if (gameState.state === 'lobby') { showScreen('lobby-screen'); renderLobby(); }
-  else { showScreen('game-screen'); renderGame(); }
+  if (gameState.state === 'lobby') {
+    $('reveal-overlay').style.display = 'none';
+    showScreen('lobby-screen');
+    renderLobby();
+  } else { showScreen('game-screen'); renderGame(); }
 }
 
 // ===== Render Lobby =====
