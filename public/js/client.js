@@ -327,13 +327,17 @@ function buildCardFace(card, extraClass) {
   const cls = powerClass(v);
   const label = powerLabel(v);
   const extra = extraClass || '';
+  // Image fills the card; onerror hides it so the number/label fallback shows
+  const img = `<img class="card-img" src="/images/cards/${v}.jpg" alt="${v}" onerror="this.style.display='none'">`;
   if (label) {
     return `<div class="card card-face ${cls} ${extra}">
+      ${img}
       <span class="card-corner">${v}</span>
       <span class="card-name">${label}</span>
     </div>`;
   }
   return `<div class="card card-face ${cls} ${extra}">
+    ${img}
     <span class="card-num">${v}</span>
   </div>`;
 }
