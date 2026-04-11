@@ -801,9 +801,9 @@ function renderOpponents() {
     seatEl.className = `seat ${posClass}`;
     seatEl.dataset.playerIndex = pIndex;
     seatEl.innerHTML = `
-      <div class="bubble" style="display:none"></div>
-      <div class="seat-cards">${cards}</div>
       <div class="seat-name ${isActive ? 'active-turn' : ''}">${p.name}${botTag}${caboTag}</div>
+      <div class="seat-cards">${cards}</div>
+      <div class="bubble" style="display:none"></div>
     `;
 
     seatEl.querySelectorAll('.card[data-player-index]').forEach(el => {
