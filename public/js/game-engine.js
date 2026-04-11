@@ -301,9 +301,8 @@ class CaboGame {
       }
       this._nextTurn();
     } else {
-      // Fail: add penalty card, turn continues (player still draws normally)
-      if (this.deck.length > 0) player.cards.push(this.deck.pop());
       events.push({ target: 'all', type: 'slam-fail', data: { playerIndex, playerName: player.name, cards: slammedCards } });
+      this._nextTurn();
     }
     return { broadcast: true, events };
   }
@@ -358,7 +357,7 @@ class CaboGame {
     const roundScores = this.players.map(p => p.cards.reduce((s, c) => s + cardValue(c), 0));
     const lowestScore = Math.min(...roundScores);
     if (this.caboCallerIndex !== null && roundScores[this.caboCallerIndex] > lowestScore)
-      roundScores[this.caboCallerIndex] += 10;
+      roundScores[this.caboCallerIndex] += 5;
     this.roundScores = roundScores;
     this.scoreHistory.push([...roundScores]);
     this.players.forEach((p, i) => { p.score += roundScores[i]; });

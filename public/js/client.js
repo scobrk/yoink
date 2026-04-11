@@ -29,7 +29,9 @@ let myName = '';
 let roomCode = '';
 let gameState = null;
 let peekTimeout = null;
-let activePeek = null; // { playerIndex, cardIndex, card } — survives render cycles
+let activePeek = null;       // { playerIndex, cardIndex, card } — survives render cycles
+let activeSwapLabel = null;  // { playerIndex, cardIndex } — shows "swapped" on a card for 3s
+let swapLabelTimeout = null;
 let botIds = [];
 let botMemory = {};
 let slamMode = false;
@@ -347,17 +349,41 @@ function applyCardBg(el, v) {
   el.style.backgroundPosition = 'center';
 }
 
-function buildCardFace(card, extraClass) {
+function buildCardFace(card, extraClass, inner = '') {
   const v = card.value;
   const cls = powerClass(v);
   const extra = extraClass || '';
-  return `<div class="card card-face ${cls} ${extra}" style="${cardBgStyle(v)}"></div>`;
+  return `<div class="card card-face ${cls} ${extra}" style="${cardBgStyle(v)}">${inner}</div>`;
 }
 
-function buildCardBack(extraClass) {
+function buildCardBack(extraClass, inner = '') {
   return `<div class="card card-back ${extraClass || ''}">
     <div class="card-back-design"><div class="card-back-border"><div class="card-back-pattern">\u{1F9AB}</div></div></div>
+    ${inner}
   </div>`;
+}
+
+function swapLabelFor(playerIndex, cardIndex) {
+  return activeSwapLabel && activeSwapLabel.playerIndex === playerIndex && activeSwapLabel.cardIndex === cardIndex
+    ? '<span class="swap-label">swapped</span>' : '';
+}
+
+function showSwapLabel(playerIndex, cardIndex) {
+  if (swapLabelTimeout) clearTimeout(swapLabelTimeout);
+  activeSwapLabel = { playerIndex, cardIndex };
+  if (gameState) {
+    if (playerIndex === gameState.myIndex) renderMyCards();
+    else renderOpponents();
+  }
+  swapLabelTimeout = setTimeout(() => {
+    swapLabelTimeout = null;
+    const wasPlayer = activeSwapLabel ? activeSwapLabel.playerIndex : null;
+    activeSwapLabel = null;
+    if (gameState) {
+      if (wasPlayer === gameState.myIndex) renderMyCards();
+      else renderOpponents();
+    }
+  }, 3000);
 }
 
 // ===== Network: Send action to host =====
@@ -490,6 +516,7 @@ function handleEvent(evtType, data) {
       break;
     case 'card-swapped':
       showToast(t('cardSwapped', data.cardIndex + 1));
+      if (gameState) showSwapLabel(gameState.myIndex, data.cardIndex);
       break;
     case 'draw-occurred':
       showBubble(data.actorIndex, data.source === 'deck' ? t('bubbleDraw') : t('bubbleDrawDiscard'));
@@ -506,6 +533,7 @@ function handleEvent(evtType, data) {
       break;
     case 'swap-drawn':
       showBubble(data.actorIndex, t('bubbleSwapDrawn', data.pos));
+      showSwapLabel(data.actorIndex, data.pos - 1);
       break;
     case 'discard-drawn':
       showBubble(data.actorIndex, data.power ? t('bubbleDiscardPower', data.power.toUpperCase()) : t('bubbleDiscard'));
@@ -885,8 +913,9 @@ function renderOpponents() {
       const extra = getOpponentCardExtra(pIndex, j);
       const peekCard = activePeek && activePeek.playerIndex === pIndex && activePeek.cardIndex === j
         ? activePeek.card : null;
-      if (peekCard) return buildCardFace(peekCard, 'card-small card-peek-reveal' + extra);
-      return card.faceUp ? buildCardFace(card, 'card-small' + extra) : buildCardBack('card-small' + extra);
+      const swapLbl = swapLabelFor(pIndex, j);
+      if (peekCard) return buildCardFace(peekCard, 'card-small card-peek-reveal' + extra, swapLbl);
+      return card.faceUp ? buildCardFace(card, 'card-small' + extra, swapLbl) : buildCardBack('card-small' + extra, swapLbl);
     }).join('');
 
     const seatEl = document.createElement('div');
@@ -979,11 +1008,13 @@ function renderMyCards() {
     const clickCls = canClick ? ' clickable' : '';
     const peekCls = peekCard ? ' card-peek-reveal' : '';
 
+    const swapLbl = swapLabelFor(gameState.myIndex, i);
     if (peekCard || card.faceUp) {
-      return `<div class="card card-face ${powerClass(display.value)}${highlight}${selected}${clickCls}${peekCls}" style="${cardBgStyle(display.value)}" data-index="${i}"></div>`;
+      return `<div class="card card-face ${powerClass(display.value)}${highlight}${selected}${clickCls}${peekCls}" style="${cardBgStyle(display.value)}" data-index="${i}">${swapLbl}</div>`;
     }
     return `<div class="card card-back${highlight}${selected}${clickCls}" data-index="${i}">
       <div class="card-back-design"><div class="card-back-border"><div class="card-back-pattern">\u{1F9AB}</div></div></div>
+      ${swapLbl}
     </div>`;
   }).join('');
 

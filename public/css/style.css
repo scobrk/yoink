@@ -422,6 +422,29 @@ input::placeholder { color: var(--text-dim); }
   to   { transform: scaleX(1); opacity: 1; }
 }
 
+.swap-label {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.65);
+  color: #fff;
+  font-size: 0.55rem;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 1px 5px;
+  border-radius: 3px;
+  pointer-events: none;
+  z-index: 20;
+  animation: swapLabelIn 0.15s ease;
+}
+@keyframes swapLabelIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
 .pile-label {
   display: block;
   font-family: 'Jersey 25', monospace;
