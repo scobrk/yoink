@@ -407,8 +407,14 @@ input::placeholder { color: var(--text-dim); }
 }
 .empty-label { font-size: 0.65rem; color: rgba(255,255,255,0.28); }
 
-/* ── Drawn Card ── */
-#drawn-card-area { display: flex; align-items: center; gap: 0.6rem; }
+/* ── Drawn Card — always in layout, visibility toggled by JS ── */
+#drawn-card-area {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  /* Reserve vertical space so toggling visibility never shifts the grid */
+  min-height: calc(90px + 0.5rem);
+}
 #drawn-label { font-size: 0.75rem; color: var(--gold-light); }
 
 /* ── Speech Bubbles ── */
@@ -615,19 +621,32 @@ input::placeholder { color: var(--text-dim); }
 .card-selected { box-shadow: 0 0 0 3px var(--roof-light) !important; transform: translateY(-5px); }
 .card-dim { opacity: 0.4; pointer-events: none; }
 
-/* ===== Status Bar ===== */
+/* ===== Status Bar — fixed height, never resizes ===== */
 #status-bar {
-  padding: 0.45rem 1rem 0.6rem;
+  /* Fixed height: message line + two rows of buttons + padding */
+  min-height: 96px;
+  padding: 0.5rem 1rem 0.6rem;
   text-align: center;
   background: rgba(0,0,0,0.38);
   border-top: 1px solid rgba(200,164,56,0.12);
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.4rem;
 }
 #status-message {
-  font-size: 0.82rem; margin-bottom: 0.45rem;
-  min-height: 1.2em; color: var(--plaster-warm);
+  font-size: 0.82rem;
+  min-height: 1.3em; /* always reserve one text line */
+  color: var(--plaster-warm);
 }
-#action-buttons { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; }
+#action-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  min-height: 36px; /* always reserve one button row */
+}
 #action-buttons .btn { font-size: 0.82rem; padding: 0.5rem 0.9rem; }
 
 /* ===== Cabo Banner ===== */

@@ -859,7 +859,7 @@ function renderTableCenter() {
 function renderDrawnCard() {
   const area = $('drawn-card-area');
   if (gameState.drawnCard && (gameState.turnPhase === 'drawn' || gameState.turnPhase === 'discard_swap')) {
-    area.style.display = 'flex';
+    area.style.visibility = 'visible';
     const card = gameState.drawnCard;
     const lbl = powerLabel(card.value);
     const el = $('drawn-card');
@@ -871,7 +871,7 @@ function renderDrawnCard() {
     }
     $('drawn-label').textContent = gameState.turnPhase === 'discard_swap' ? t('fromDiscard') : t('drawn');
   } else {
-    area.style.display = 'none';
+    area.style.visibility = 'hidden';
   }
 }
 
