@@ -628,7 +628,7 @@ input::placeholder { color: var(--text-dim); }
 
 /* Card Face — warm cream parchment */
 .card-face {
-  background: var(--cream);
+  background-color: var(--cream);
   border: 3px solid var(--ink);
   box-shadow: 3px 3px 0 var(--shadow);
   display: flex; flex-direction: column;
@@ -672,10 +672,10 @@ input::placeholder { color: var(--text-dim); }
 .card-large .card-corner { font-size: 0.9rem; top: 6px; left: 8px; }
 
 /* Power colour coding — flat pixel fills */
-.power-none { background: var(--cream);   color: var(--ink); }
-.power-peek { background: var(--peek-bg); color: var(--peek-fg); }
-.power-spy  { background: var(--spy-bg);  color: var(--spy-fg); }
-.power-swap { background: var(--swap-bg); color: var(--swap-fg); }
+.power-none { background-color: var(--cream);   color: var(--ink); }
+.power-peek { background-color: var(--peek-bg); color: var(--peek-fg); }
+.power-spy  { background-color: var(--spy-bg);  color: var(--spy-fg); }
+.power-swap { background-color: var(--swap-bg); color: var(--swap-fg); }
 
 /* Card states */
 .clickable { cursor: pointer; }
