@@ -666,6 +666,7 @@ $('room-code-input').addEventListener('keydown', (e) => { if (e.key === 'Enter')
 $('room-code-input').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase(); });
 
 $('rules-btn').addEventListener('click', () => { $('rules-overlay').style.display = 'flex'; });
+$('rules-btn-header').addEventListener('click', () => { $('rules-overlay').style.display = 'flex'; });
 $('rules-close').addEventListener('click', () => { $('rules-overlay').style.display = 'none'; });
 $('rules-overlay').addEventListener('click', (e) => {
   if (e.target === $('rules-overlay')) $('rules-overlay').style.display = 'none';

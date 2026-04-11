@@ -890,11 +890,19 @@ input::placeholder { color: var(--text-dim); }
   font-family: 'Jersey 25', monospace;
   font-size: 1rem; font-weight: 700;
   cursor: pointer; z-index: 30;
-  display: flex; align-items: center; justify-content: center;
+  display: none; /* hidden on mobile — use header button instead */
+  align-items: center; justify-content: center;
   transition: transform 0.06s, box-shadow 0.06s;
 }
 .rules-fab:hover  { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 var(--shadow); }
 .rules-fab:active { transform: translate(2px, 2px);  box-shadow: 1px 1px 0 var(--shadow); }
+
+/* Header ? button — mobile only */
+.rules-header-btn { display: flex; }
+@media (min-width: 600px) {
+  .rules-fab { display: flex; }
+  .rules-header-btn { display: none; }
+}
 
 /* Lang toggle — in game header */
 .header-right {
