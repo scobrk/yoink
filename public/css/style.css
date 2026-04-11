@@ -46,22 +46,39 @@
 
 body {
   font-family: 'Pixelify Sans', 'Inter', monospace;
-  /* Pixel grid background texture */
-  background-color: var(--forest);
-  background-image:
-    linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
-  background-size: 16px 16px;
+  background-color: var(--forest); /* fallback when image absent */
   color: var(--text);
   min-height: 100dvh;
   overflow: hidden;
   -webkit-user-select: none;
   user-select: none;
-  image-rendering: pixelated;
+}
+
+/* Alpine scene — darkened & fixed behind all content */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: url('/images/bg.jpg') center top / cover no-repeat;
+  filter: brightness(0.32) saturate(0.88);
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* ===== Screens ===== */
-.screen { display: none; width: 100%; min-height: 100dvh; }
+.screen {
+  display: none;
+  width: 100%;
+  min-height: 100dvh;
+  position: relative;
+  z-index: 1; /* above body::before */
+  /* pixel grid floats above the alpine image */
+  background-image:
+    linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 16px 16px;
+  background-color: transparent;
+}
 .screen.active { display: flex; }
 
 /* ===== Lobby ===== */
@@ -72,9 +89,14 @@ body {
 
 .lobby-container {
   width: 100%;
-  max-width: 360px;
+  max-width: 380px;
   padding: 2rem 1.5rem;
   text-align: center;
+  background: rgba(18, 32, 18, 0.72);
+  border: 2px solid rgba(255,255,255,0.07);
+  box-shadow: 4px 4px 0 var(--shadow);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 .logo-beaver { font-size: 3.5rem; line-height: 1; margin-bottom: 0.25rem; }
@@ -215,7 +237,9 @@ input::placeholder { color: var(--text-dim); }
 #game-header {
   display: flex; justify-content: space-between; align-items: center;
   padding: 0.5rem 1rem;
-  background: var(--pine);
+  background: rgba(20, 38, 20, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 3px solid var(--ink);
   box-shadow: 0 3px 0 var(--shadow);
   font-size: 0.82rem;
@@ -228,7 +252,9 @@ input::placeholder { color: var(--text-dim); }
 
 #scores-panel {
   position: absolute; top: 2.4rem; right: 0.5rem;
-  background: var(--pine);
+  background: rgba(20, 38, 20, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 3px solid var(--ink);
   box-shadow: 4px 4px 0 var(--shadow);
   padding: 0.75rem 1rem;
@@ -673,7 +699,9 @@ input::placeholder { color: var(--text-dim); }
   min-height: 108px;
   padding: 0.6rem 1rem 0.7rem;
   text-align: center;
-  background: var(--pine);
+  background: rgba(20, 38, 20, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-top: 3px solid var(--ink);
   box-shadow: 0 -3px 0 var(--shadow);
   flex-shrink: 0;
@@ -728,19 +756,37 @@ input::placeholder { color: var(--text-dim); }
   display: flex; align-items: center; justify-content: center;
 }
 
-.reveal-content, .rules-content {
-  background: var(--pine);
+/* Reveal: flex column so buttons are always visible regardless of scroll depth */
+.reveal-content {
+  background: rgba(20, 38, 20, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 3px solid var(--ink);
   box-shadow: 5px 5px 0 var(--shadow);
   padding: 1.5rem;
   max-width: 400px; width: 90%;
-  max-height: 85dvh; overflow-y: auto;
+  max-height: 88dvh;
+  display: flex;
+  flex-direction: column;
 }
+
+.rules-content {
+  background: rgba(20, 38, 20, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 3px solid var(--ink);
+  box-shadow: 5px 5px 0 var(--shadow);
+  padding: 1.5rem;
+  max-width: 400px; width: 90%;
+  max-height: 88dvh; overflow-y: auto;
+}
+
 .reveal-content h2, .rules-content h2 {
   font-family: 'Pixelify Sans', monospace;
   color: var(--gold);
   text-align: center; margin-bottom: 1rem;
   text-shadow: 2px 2px 0 var(--shadow);
+  flex-shrink: 0;
 }
 
 .reveal-player {
@@ -767,7 +813,22 @@ input::placeholder { color: var(--text-dim); }
 .reveal-penalty { font-size: 0.72rem; color: var(--red-l); text-align: right; font-family: 'Pixelify Sans', monospace; }
 .reveal-total-score { font-size: 0.72rem; color: var(--text-dim); text-align: right; margin-top: 0.15rem; }
 
-#reveal-buttons { display: flex; gap: 0.5rem; justify-content: center; margin-top: 1rem; }
+/* Results scrolls; buttons are always pinned at the bottom */
+#reveal-results {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0; /* required for flex overflow to work */
+}
+
+#reveal-buttons {
+  flex-shrink: 0;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  padding-top: 0.85rem;
+  border-top: 2px solid rgba(255,255,255,0.06);
+  margin-top: 0.5rem;
+}
 
 .peek-content { text-align: center; }
 .peek-content .card { margin: 0 auto; }
