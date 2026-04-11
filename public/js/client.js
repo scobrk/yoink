@@ -322,13 +322,21 @@ function powerLabel(value) {
   return '';
 }
 
+function cardBgStyle(v) {
+  return `background-image:url('/images/cards/${v}.jpg');background-size:cover;background-position:center`;
+}
+
+function applyCardBg(el, v) {
+  el.style.backgroundImage = `url('/images/cards/${v}.jpg')`;
+  el.style.backgroundSize = 'cover';
+  el.style.backgroundPosition = 'center';
+}
+
 function buildCardFace(card, extraClass) {
   const v = card.value;
   const cls = powerClass(v);
-  const label = powerLabel(v);
   const extra = extraClass || '';
-  const bg = `background-image:url('/images/cards/${v}.jpg');background-size:cover;background-position:center`;
-  return `<div class="card card-face ${cls} ${extra}" style="${bg}">
+  return `<div class="card card-face ${cls} ${extra}" style="${cardBgStyle(v)}">
     <span class="card-corner">${v}</span>
   </div>`;
 }
@@ -907,13 +915,9 @@ function renderTableCenter() {
   const discardEl = $('discard');
   if (gameState.discardTop) {
     const card = gameState.discardTop;
-    const lbl = powerLabel(card.value);
     discardEl.className = `card card-face ${powerClass(card.value)}`;
-    if (lbl) {
-      discardEl.innerHTML = `<span class="card-corner">${card.value}</span><span class="card-name">${lbl}</span>`;
-    } else {
-      discardEl.innerHTML = `<span class="card-num">${card.value}</span>`;
-    }
+    applyCardBg(discardEl, card.value);
+    discardEl.innerHTML = `<span class="card-corner">${card.value}</span>`;
     discardEl.classList.toggle('clickable', canDraw);
     discardEl.classList.toggle('card-highlight', canDraw);
     discardEl.onclick = canDraw ? () => sendAction('draw-discard') : null;
@@ -935,11 +939,9 @@ function renderDrawnCard() {
   }
 
   const card = gameState.drawnCard;
-  const lbl = powerLabel(card.value);
   revealEl.className = `card card-face ${powerClass(card.value)}`;
-  revealEl.innerHTML = lbl
-    ? `<span class="card-corner">${card.value}</span><span class="card-name">${lbl}</span>`
-    : `<span class="card-num">${card.value}</span>`;
+  applyCardBg(revealEl, card.value);
+  revealEl.innerHTML = `<span class="card-corner">${card.value}</span>`;
   revealEl.style.display = 'block';
 }
 
@@ -962,11 +964,7 @@ function renderMyCards() {
     const peekCls = peekCard ? ' card-peek-reveal' : '';
 
     if (peekCard || card.faceUp) {
-      const lbl = powerLabel(display.value);
-      const inner = lbl
-        ? `<span class="card-corner">${display.value}</span><span class="card-name">${lbl}</span>`
-        : `<span class="card-num">${display.value}</span>`;
-      return `<div class="card card-face ${powerClass(display.value)}${highlight}${selected}${clickCls}${peekCls}" data-index="${i}">${inner}</div>`;
+      return `<div class="card card-face ${powerClass(display.value)}${highlight}${selected}${clickCls}${peekCls}" style="${cardBgStyle(display.value)}" data-index="${i}"><span class="card-corner">${display.value}</span></div>`;
     }
     return `<div class="card card-back${highlight}${selected}${clickCls}" data-index="${i}">
       <div class="card-back-design"><div class="card-back-border"><div class="card-back-pattern">\u{1F9AB}</div></div></div>
