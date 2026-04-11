@@ -545,6 +545,7 @@ function handleEvent(evtType, data) {
       showBubble(data.playerIndex, t('bubbleSlamOk', data.count));
       showToast(t('slamSuccess', data.playerName, data.count));
       if (data.cards && data.cards.length) showSlamOverlay(data.cards, true);
+      if (data.newCardIndex >= 0) showSwapLabel(data.playerIndex, data.newCardIndex);
       break;
     case 'slam-fail':
       showBubble(data.playerIndex, t('bubbleSlamFail'));

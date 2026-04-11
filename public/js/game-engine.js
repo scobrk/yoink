@@ -292,8 +292,9 @@ class CaboGame {
       }
       player.knownCards = newKnown;
       // Replace with 1 unknown card — player doesn't see its value
-      if (this.deck.length > 0) player.cards.push(this.deck.pop());
-      events.push({ target: 'all', type: 'slam-success', data: { playerIndex, playerName: player.name, count: sorted.length, cards: slammedCards } });
+      let newCardIndex = -1;
+      if (this.deck.length > 0) { player.cards.push(this.deck.pop()); newCardIndex = player.cards.length - 1; }
+      events.push({ target: 'all', type: 'slam-success', data: { playerIndex, playerName: player.name, count: sorted.length, cards: slammedCards, newCardIndex } });
       if (player.cards.length === 0 && this.caboCallerIndex === null) {
         this.caboCallerIndex = playerIndex;
         this.caboPassed = -1;
