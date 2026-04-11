@@ -522,21 +522,17 @@ function showCaboBanner() {
 }
 
 function showPeekOverlay(card, label) {
-  const overlay = $('peek-overlay');
-  const peekCard = $('peek-card');
+  const revealEl = $('deck-reveal');
   const v = card.value;
   const lbl = powerLabel(v);
-  peekCard.className = `card card-large card-face ${powerClass(v)}`;
-  if (lbl) {
-    peekCard.innerHTML = `<span class="card-corner">${v}</span><span class="card-name">${lbl}</span>`;
-  } else {
-    peekCard.innerHTML = `<span class="card-num">${v}</span>`;
-  }
-  $('peek-label').textContent = label;
-  overlay.style.display = 'flex';
+  revealEl.className = `card card-face ${powerClass(v)}`;
+  revealEl.innerHTML = lbl
+    ? `<span class="card-corner">${v}</span><span class="card-name">${lbl}</span>`
+    : `<span class="card-num">${v}</span>`;
+  revealEl.style.display = 'block';
+  revealEl.title = label;
   if (peekTimeout) clearTimeout(peekTimeout);
-  peekTimeout = setTimeout(() => { overlay.style.display = 'none'; }, 3000);
-  overlay.onclick = () => { overlay.style.display = 'none'; if (peekTimeout) clearTimeout(peekTimeout); };
+  peekTimeout = setTimeout(() => { revealEl.style.display = 'none'; }, 3000);
 }
 
 // ===== Swap Animation =====
@@ -758,6 +754,12 @@ function joinRoom(code) {
 function renderFromState() {
   if (!gameState) return;
   if (gameState.turnPhase !== 'start') { slamMode = false; slamSelection = []; }
+  // Clear deck reveal if we're no longer in a drawn phase (turn changed etc.)
+  const isMyTurn = gameState.myIndex === gameState.currentPlayerIndex;
+  if (!isMyTurn || (gameState.turnPhase !== 'drawn' && gameState.turnPhase !== 'discard_swap')) {
+    const rev = $('deck-reveal');
+    if (rev && gameState.turnPhase !== 'power') rev.style.display = 'none';
+  }
   if (gameState.state === 'lobby') { showScreen('lobby-screen'); renderLobby(); }
   else { showScreen('game-screen'); renderGame(); }
 }
@@ -925,71 +927,22 @@ function renderTableCenter() {
 }
 
 function renderDrawnCard() {
-  // drawn-card-area is kept hidden — it's just a grid placeholder
-  $('drawn-card-area').style.visibility = 'hidden';
-
-  const modal = $('drawn-modal');
+  const revealEl = $('deck-reveal');
   const isMyTurn = gameState.myIndex === gameState.currentPlayerIndex;
 
   if (!gameState.drawnCard || !isMyTurn ||
       (gameState.turnPhase !== 'drawn' && gameState.turnPhase !== 'discard_swap')) {
-    modal.style.display = 'none';
+    revealEl.style.display = 'none';
     return;
   }
 
-  modal.style.display = 'flex';
-
-  // Label
-  $('drawn-modal-label').textContent =
-    gameState.turnPhase === 'discard_swap' ? t('fromDiscard') : t('drawn');
-
-  // Card
   const card = gameState.drawnCard;
   const lbl = powerLabel(card.value);
-  const cardEl = $('drawn-modal-card');
-  cardEl.className = `card card-face card-large ${powerClass(card.value)}`;
-  cardEl.innerHTML = lbl
+  revealEl.className = `card card-face ${powerClass(card.value)}`;
+  revealEl.innerHTML = lbl
     ? `<span class="card-corner">${card.value}</span><span class="card-name">${lbl}</span>`
     : `<span class="card-num">${card.value}</span>`;
-
-  // Hint
-  $('drawn-modal-hint').textContent = t('whichCard');
-
-  // My cards as swap targets
-  const me = gameState.players.find(p => p.isMe);
-  const targetsEl = $('drawn-modal-targets');
-  if (me) {
-    targetsEl.innerHTML = me.cards.map((myCard, i) => {
-      if (myCard.faceUp) {
-        const myLbl = powerLabel(myCard.value);
-        const inner = myLbl
-          ? `<span class="card-corner">${myCard.value}</span><span class="card-name">${myLbl}</span>`
-          : `<span class="card-num">${myCard.value}</span>`;
-        return `<div class="card card-face card-small clickable card-highlight ${powerClass(myCard.value)}" data-index="${i}">${inner}</div>`;
-      }
-      return `<div class="card card-back card-small clickable card-highlight" data-index="${i}">
-        <div class="card-back-design"><div class="card-back-border"><div class="card-back-pattern">\u{1F9AB}</div></div></div>
-      </div>`;
-    }).join('');
-    targetsEl.querySelectorAll('.card').forEach(el => {
-      el.addEventListener('click', () => {
-        modal.style.display = 'none';
-        sendAction('swap-card', { cardIndex: parseInt(el.dataset.index) });
-      });
-    });
-  }
-
-  // Actions: discard button only for deck-drawn phase (not discard_swap which must swap)
-  const actionsEl = $('drawn-modal-actions');
-  if (gameState.turnPhase === 'drawn') {
-    actionsEl.innerHTML = `<button class="btn btn-secondary btn-small" id="btn-modal-discard">${t('discardCard')}</button>`;
-    $('btn-modal-discard').addEventListener('click', () => {
-      modal.style.display = 'none';
-      sendAction('discard-drawn');
-    });
-  } else {
-    actionsEl.innerHTML = '';
-  }
+  revealEl.style.display = 'block';
 }
 
 function renderMyCards() {
@@ -1065,7 +1018,11 @@ function onMyCardClick(cardIndex) {
     renderMyCards(); renderStatus();
     return;
   }
-  if (gameState.turnPhase === 'drawn' || gameState.turnPhase === 'discard_swap') { sendAction('swap-card', { cardIndex }); return; }
+  if (gameState.turnPhase === 'drawn' || gameState.turnPhase === 'discard_swap') {
+    $('deck-reveal').style.display = 'none';
+    sendAction('swap-card', { cardIndex });
+    return;
+  }
   if (gameState.powerState && gameState.powerState.type === 'peek') { sendAction('use-power', { targetPlayerIndex: gameState.myIndex, targetCardIndex: cardIndex }); return; }
   if (gameState.powerState && gameState.powerState.type === 'swap' && gameState.powerState.step === 'select_own') { sendAction('use-power', { targetPlayerIndex: gameState.myIndex, targetCardIndex: cardIndex }); return; }
 }
@@ -1130,8 +1087,16 @@ function renderStatus() {
     ).join('');
     startBtns.forEach(b => $(b.id).addEventListener('click', b.fn));
 
-  } else if (gameState.turnPhase === 'drawn' || gameState.turnPhase === 'discard_swap') {
-    // Modal handles these phases — nothing needed in status bar
+  } else if (gameState.turnPhase === 'drawn') {
+    msg.textContent = t('swapOrDiscard');
+    btns.innerHTML = `<button class="btn btn-secondary btn-small" id="btn-discard">${t('discardCard')}</button>`;
+    $('btn-discard').addEventListener('click', () => {
+      $('deck-reveal').style.display = 'none';
+      sendAction('discard-drawn');
+    });
+
+  } else if (gameState.turnPhase === 'discard_swap') {
+    msg.textContent = t('whichCard');
 
   } else if (gameState.turnPhase === 'power') {
     const power = gameState.powerState;

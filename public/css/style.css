@@ -274,13 +274,12 @@ input::placeholder { color: var(--text-dim); }
   flex: 1;
   display: grid;
   grid-template-columns: auto auto auto;
-  grid-template-rows: auto auto auto auto;
+  grid-template-rows: auto 1fr auto;
   grid-template-areas:
     "left top   right"
     "left felt  right"
-    ".    drawn ."
     ".    my    .";
-  align-content: space-between;
+  align-content: stretch;
   justify-content: center;
   align-items: center;
   justify-items: center;
@@ -291,8 +290,8 @@ input::placeholder { color: var(--text-dim); }
 }
 
 #table-felt      { grid-area: felt;  align-self: center; justify-self: center; }
-#drawn-card-area { grid-area: drawn; justify-self: center; }
-#my-area         { grid-area: my;    justify-self: center; }
+#drawn-card-area { display: none; }
+#my-area         { grid-area: my;    justify-self: center; align-self: end; }
 
 /* ── Seat Positions ── */
 .seat-pos-top {
@@ -399,6 +398,21 @@ input::placeholder { color: var(--text-dim); }
 #table-piles { display: flex; gap: 2rem; align-items: center; }
 #deck-area, #discard-area { position: relative; text-align: center; }
 
+/* Card revealed on top of deck (drawn card / peek / spy) */
+#deck-reveal {
+  position: absolute;
+  top: -10px;
+  left: calc(50% + 6px);
+  transform: translateX(-50%) rotate(-6deg);
+  z-index: 15;
+  pointer-events: none;
+  animation: deckFlip 0.22s ease;
+}
+@keyframes deckFlip {
+  from { opacity: 0; transform: translateX(-50%) rotate(-12deg) translateY(-10px); }
+  to   { opacity: 1; transform: translateX(-50%) rotate(-6deg)  translateY(0); }
+}
+
 .pile-label {
   display: block;
   font-family: 'Jersey 25', monospace;
@@ -430,18 +444,6 @@ input::placeholder { color: var(--text-dim); }
   font-size: 0.6rem; color: rgba(255,255,255,0.25);
 }
 
-/* ── Drawn Card — always in layout, visibility toggled by JS ── */
-#drawn-card-area {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  min-height: calc(100px + 0.6rem);
-}
-#drawn-label {
-  font-family: 'Jersey 25', monospace;
-  font-size: 0.82rem;
-  color: var(--gold-l);
-}
 
 /* ── Speech Bubbles ── */
 .bubble {
