@@ -351,9 +351,7 @@ function buildCardFace(card, extraClass) {
   const v = card.value;
   const cls = powerClass(v);
   const extra = extraClass || '';
-  return `<div class="card card-face ${cls} ${extra}" style="${cardBgStyle(v)}">
-    <span class="card-corner">${v}</span>
-  </div>`;
+  return `<div class="card card-face ${cls} ${extra}" style="${cardBgStyle(v)}"></div>`;
 }
 
 function buildCardBack(extraClass) {
@@ -932,7 +930,7 @@ function renderTableCenter() {
     const card = gameState.discardTop;
     discardEl.className = `card card-face ${powerClass(card.value)}`;
     applyCardBg(discardEl, card.value);
-    discardEl.innerHTML = `<span class="card-corner">${card.value}</span>`;
+    discardEl.innerHTML = '';
     discardEl.classList.toggle('clickable', canDraw);
     discardEl.classList.toggle('card-highlight', canDraw);
     discardEl.onclick = canDraw ? () => sendAction('draw-discard') : null;
@@ -956,7 +954,7 @@ function renderDrawnCard() {
   const card = gameState.drawnCard;
   revealEl.className = `card card-face ${powerClass(card.value)}`;
   applyCardBg(revealEl, card.value);
-  revealEl.innerHTML = `<span class="card-corner">${card.value}</span>`;
+  revealEl.innerHTML = '';
   revealEl.style.display = 'block';
 }
 
@@ -979,7 +977,7 @@ function renderMyCards() {
     const peekCls = peekCard ? ' card-peek-reveal' : '';
 
     if (peekCard || card.faceUp) {
-      return `<div class="card card-face ${powerClass(display.value)}${highlight}${selected}${clickCls}${peekCls}" style="${cardBgStyle(display.value)}" data-index="${i}"><span class="card-corner">${display.value}</span></div>`;
+      return `<div class="card card-face ${powerClass(display.value)}${highlight}${selected}${clickCls}${peekCls}" style="${cardBgStyle(display.value)}" data-index="${i}"></div>`;
     }
     return `<div class="card card-back${highlight}${selected}${clickCls}" data-index="${i}">
       <div class="card-back-design"><div class="card-back-border"><div class="card-back-pattern">\u{1F9AB}</div></div></div>
