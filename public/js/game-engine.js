@@ -116,10 +116,11 @@ class CaboGame {
         score: p.score,
         isBot: p.isBot,
         isMe: i === playerIndex,
-        cards: p.cards.map(card => this.state === 'reveal'
-          ? { ...card, faceUp: true }
-          : { faceUp: false }
-        )
+        cards: p.cards.map((card, idx) => {
+          if (this.state === 'reveal') return { ...card, faceUp: true };
+          if (i === playerIndex && p.knownCards.has(idx)) return { ...card, faceUp: true };
+          return { faceUp: false };
+        })
       }))
     };
   }
