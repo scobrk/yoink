@@ -118,7 +118,7 @@ class CaboGame {
         isMe: i === playerIndex,
         cards: p.cards.map((card, idx) => {
           if (this.state === 'reveal') return { ...card, faceUp: true };
-          if (i === playerIndex && p.knownCards.has(idx)) return { ...card, faceUp: true };
+          if (this.state === 'peeking' && i === playerIndex && p.knownCards.has(idx)) return { ...card, faceUp: true };
           return { faceUp: false };
         })
       }))
