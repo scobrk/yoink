@@ -721,6 +721,18 @@ $('scores-toggle').addEventListener('click', () => {
 $('lang-toggle').addEventListener('click', toggleLanguage);
 $('lang-toggle-lobby').addEventListener('click', toggleLanguage);
 
+// Delegated handlers — survive DOM rebuilds (critical for mobile touch → click gap)
+$('my-cards').addEventListener('click', e => {
+  const card = e.target.closest('.card[data-index]');
+  if (!card || !card.classList.contains('clickable')) return;
+  onMyCardClick(parseInt(card.dataset.index));
+});
+$('game-table').addEventListener('click', e => {
+  const card = e.target.closest('.card[data-player-index]');
+  if (!card) return;
+  onOpponentCardClick(parseInt(card.dataset.playerIndex), parseInt(card.dataset.cardIndex));
+});
+
 // ===== Create Room (Host) =====
 function createRoom() {
   roomCode = generateRoomCode();
@@ -928,11 +940,6 @@ function renderOpponents() {
       <div class="bubble" style="display:none"></div>
     `;
 
-    seatEl.querySelectorAll('.card[data-player-index]').forEach(el => {
-      el.addEventListener('click', () => {
-        onOpponentCardClick(parseInt(el.dataset.playerIndex), parseInt(el.dataset.cardIndex));
-      });
-    });
 
     table.appendChild(seatEl);
   });
@@ -1019,9 +1026,6 @@ function renderMyCards() {
     </div>`;
   }).join('');
 
-  container.querySelectorAll('.clickable').forEach(el => {
-    el.addEventListener('click', () => onMyCardClick(parseInt(el.dataset.index)));
-  });
 }
 
 function renderActiveSeat() {
