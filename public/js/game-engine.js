@@ -360,6 +360,7 @@ class CaboGame {
     const lowestScore = Math.min(...roundScores);
     if (this.caboCallerIndex !== null && roundScores[this.caboCallerIndex] > lowestScore)
       roundScores[this.caboCallerIndex] += 5;
+    roundScores.forEach((s, i) => { if (s === lowestScore) roundScores[i] = 0; });
     this.roundScores = roundScores;
     this.scoreHistory.push([...roundScores]);
     this.players.forEach((p, i) => { p.score += roundScores[i]; });
