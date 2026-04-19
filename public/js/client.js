@@ -101,7 +101,7 @@ const TRANSLATIONS = {
     roundOver: 'Runde vorbei!',
     gameOverTitle: 'Spiel vorbei!',
     gameWinner: (name) => `\u{1F3C6} ${name} gewinnt!`,
-    penalty: '+10 Strafe (Cabo verfehlt)',
+    penalty: '+5 Strafe (Cabo verfehlt)',
     roundPoints: (n) => `Runde: +${n}`,
     totalPoints: (n) => `Gesamt: ${n}`,
     nextRound: 'N\u00e4chste Runde',
@@ -146,7 +146,7 @@ const TRANSLATIONS = {
         <li><strong>13:</strong> Hoher Wert, keine Spezialfunktion</li>
       </ul>
       <h3>Cabo rufen</h3>
-      <p>Glaube, die niedrigste Summe zu haben? Ruf <strong>CABO</strong>. Jeder andere hat noch einen Zug. Liegst du falsch: +10 Strafpunkte!</p>
+      <p>Glaube, die niedrigste Summe zu haben? Ruf <strong>CABO</strong>. Jeder andere hat noch einen Zug. Liegst du falsch: +5 Strafpunkte!</p>
     `,
   },
   en: {
@@ -207,7 +207,7 @@ const TRANSLATIONS = {
     roundOver: 'Round over!',
     gameOverTitle: 'Game over!',
     gameWinner: (name) => `\u{1F3C6} ${name} wins!`,
-    penalty: '+10 penalty (Cabo missed)',
+    penalty: '+5 penalty (Cabo missed)',
     roundPoints: (n) => `Round: +${n}`,
     totalPoints: (n) => `Total: ${n}`,
     nextRound: 'Next Round',
@@ -252,7 +252,7 @@ const TRANSLATIONS = {
         <li><strong>13:</strong> High value, no special ability</li>
       </ul>
       <h3>Calling Cabo</h3>
-      <p>Think you have the lowest total? Call <strong>CABO</strong>. Everyone else gets one more turn. Wrong call: +10 penalty!</p>
+      <p>Think you have the lowest total? Call <strong>CABO</strong>. Everyone else gets one more turn. Wrong call: +5 penalty!</p>
     `,
   }
 };
@@ -816,7 +816,14 @@ function joinRoom(code) {
 // ===== Render from State =====
 function renderFromState() {
   if (!gameState) return;
-  if (gameState.turnPhase !== 'start') { slamMode = false; slamSelection = []; }
+  slamMode = false;
+  slamSelection = [];
+  if (gameState.state === 'peeking' || gameState.state === 'lobby') {
+    if (peekTimeout) { clearTimeout(peekTimeout); peekTimeout = null; }
+    activePeek = null;
+    if (swapLabelTimeout) { clearTimeout(swapLabelTimeout); swapLabelTimeout = null; }
+    activeSwapLabel = null;
+  }
   if (gameState.state === 'lobby') {
     $('reveal-overlay').style.display = 'none';
     showScreen('lobby-screen');
